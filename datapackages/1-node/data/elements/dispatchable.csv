@@ -1,0 +1,2 @@
+name,type,carrier,tech,capacity,bus,marginal_cost,profile,output_parameters,investment_cost,fix_cost,wacc,depreciation
+gas,dispatchable,gas,gt,130000,Mid,1.6,1,"{""emission_factor"": 0.2}",450000,6000,0.07,30
