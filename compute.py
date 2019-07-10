@@ -50,3 +50,5 @@ fix_cost = sum(
     [n.capacity * n.fix_cost
         for n in es.nodes if all(
             hasattr(n, attr) for attr in ['fix_cost', 'capacity'])])
+
+print(modelstats)
