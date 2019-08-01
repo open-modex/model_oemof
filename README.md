@@ -8,7 +8,7 @@ To run the script, make sure to install the requirements e.g. via pip
 
     pip install -r requirements.txt
 
-The gurobi-solver library has to be available too.
+The gurobi-solver library has to be available too. You can change the solver in compute.py .
 
 ### Compute
 
