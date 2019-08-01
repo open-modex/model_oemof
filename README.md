@@ -4,7 +4,7 @@ For open-modex four small sample datasets are translated into tabular datapackag
 
 ### Requirements
 
-To run the script, make sure to install the requirements e.g. via pip
+To run the script, make sure to install the requirements e.g. via pip in a virtual environment
 
     pip install -r requirements.txt
 
