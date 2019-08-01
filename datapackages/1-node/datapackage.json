@@ -1,6 +1,6 @@
 {
     "profile": "tabular-data-package",
-    "name": "oemof-tabular-dispatch-example",
+    "name": "1-node",
     "resources": [
         {
             "path": "data/elements/load.csv",
@@ -103,32 +103,7 @@
                         "format": "default"
                     },
                     {
-                        "name": "profile",
-                        "type": "integer",
-                        "format": "default"
-                    },
-                    {
-                        "name": "output_parameters",
-                        "type": "object",
-                        "format": "default"
-                    },
-                    {
-                        "name": "investment_cost",
-                        "type": "integer",
-                        "format": "default"
-                    },
-                    {
                         "name": "fix_cost",
-                        "type": "integer",
-                        "format": "default"
-                    },
-                    {
-                        "name": "wacc",
-                        "type": "number",
-                        "format": "default"
-                    },
-                    {
-                        "name": "depreciation",
                         "type": "integer",
                         "format": "default"
                     }
@@ -214,18 +189,8 @@
                         "format": "default"
                     },
                     {
-                        "name": "capacity_cost",
-                        "type": "string",
-                        "format": "default"
-                    },
-                    {
                         "name": "bus",
                         "type": "string",
-                        "format": "default"
-                    },
-                    {
-                        "name": "marginal_cost",
-                        "type": "integer",
                         "format": "default"
                     },
                     {
@@ -234,27 +199,7 @@
                         "format": "default"
                     },
                     {
-                        "name": "output_parameters",
-                        "type": "object",
-                        "format": "default"
-                    },
-                    {
-                        "name": "investment_cost",
-                        "type": "integer",
-                        "format": "default"
-                    },
-                    {
                         "name": "fix_cost",
-                        "type": "integer",
-                        "format": "default"
-                    },
-                    {
-                        "name": "wacc",
-                        "type": "number",
-                        "format": "default"
-                    },
-                    {
-                        "name": "depreciation",
                         "type": "integer",
                         "format": "default"
                     }

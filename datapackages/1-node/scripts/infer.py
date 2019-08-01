@@ -6,7 +6,7 @@ from oemof.tabular.datapackage import building
 
 
 building.infer_metadata(
-    package_name='oemof-tabular-dispatch-example',
+    package_name='1-node',
     foreign_keys={
         'bus': ['volatile', 'dispatchable', 'storage', 'load'],
         'profile': ['load', 'volatile'],
