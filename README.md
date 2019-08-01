@@ -8,6 +8,8 @@ To run the script, make sure to install the requirements e.g. via pip
 
     pip install -r requirements.txt
 
+The gurobi-solver library has to be available too.
+
 ### Compute
 
 To compute the datapackages run:
