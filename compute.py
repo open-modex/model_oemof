@@ -11,44 +11,69 @@ from oemof.tabular.facades import TYPEMAP
 import oemof.tabular.tools.postprocessing as pp
 import oemof.outputlib as outputlib
 
-import pyomo.core as po
+import numpy as np
 
-name = "1-node"
+import plotly.graph_objs as go
+import plotly.offline as offline
 
 # path to directory with datapackage to load
-datapackage_dir = "datapackages/1-node/"
+path = "datapackages/"
+packages = os.listdir(path)
+meta_results = {}
 
-# create  path for results (we use the datapackage name to store results)
-results_path = os.path.join(
-    "results", name, "output")
-if not os.path.exists(results_path):
-    os.makedirs(results_path)
+for pk in packages:
 
-# create energy system object
-es = EnergySystem.from_datapackage(
-    os.path.join(datapackage_dir, "datapackage.json"),
-    attributemap={},
-    typemap=TYPEMAP,
+    # create a results directory
+    results_path = os.path.join(
+        "results", pk, "output")
+    if not os.path.exists(results_path):
+        os.makedirs(results_path)
+
+    # create energy system object
+    es = EnergySystem.from_datapackage(
+        os.path.join(path, pk, "datapackage.json"),
+        attributemap={},
+        typemap=TYPEMAP,
+    )
+
+    # collect fix costs
+    # https://github.com/oemof/oemof/pull/396
+    fix_cost = sum(
+        [n.capacity * n.fix_cost
+            for n in es.nodes if all(
+                hasattr(n, attr) for attr in ['fix_cost', 'capacity'])])
+
+    # create model from energy system
+    m = Model(es)
+
+    # select solver 'gurobi', 'cplex', 'glpk' etc
+    m.solve("gurobi")
+
+    # get the results from the the solved model
+    m.results = m.results()
+
+    pp.write_results(m, results_path)
+
+    # store model statistics
+    meta_results[pk] = outputlib.processing.meta_results(m)
+
+
+# view meta results
+columns = [
+    'Lower bound', 'Upper bound', 'Number of constraints',
+    'Number of variables', 'Number of nonzeros']
+
+values = [
+    [name, v['objective']] + [v['problem'][c] for c in columns]
+    for name, v in meta_results.items()]
+
+fig = go.Figure(data=[go.Table(
+    header=dict(values=['Name', 'Objective'] + columns),
+    cells=dict(values=np.array(values).T))])
+
+fig.update_layout(
+    height=800,
+    title_text='Meta results - For more detailed results look at the results folder.'
 )
 
-# create model from energy system
-m = Model(es)
-
-# select solver 'gurobi', 'cplex', 'glpk' etc
-m.solve("gurobi")
-
-# get the results from the the solved model
-m.results = m.results()
-
-pp.write_results(m, results_path)
-
-modelstats = outputlib.processing.meta_results(m)
-
-# calculate fix costs
-# https://github.com/oemof/oemof/pull/396
-fix_cost = sum(
-    [n.capacity * n.fix_cost
-        for n in es.nodes if all(
-            hasattr(n, attr) for attr in ['fix_cost', 'capacity'])])
-
-print(modelstats)
+offline.plot(fig, filename='results.html', auto_open=True)
