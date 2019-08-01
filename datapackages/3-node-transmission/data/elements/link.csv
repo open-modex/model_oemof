@@ -1,0 +1,4 @@
+name,type,from_bus,to_bus,capacity,loss,fix_cost
+Mid-North-link,link,Mid,North,5000,0.1,33000
+Mid-South-link,link,Mid,South,4000,0.1,33000
+South-North-link,link,South,North,2000,0.15,60000

@@ -1,0 +1,2 @@
+name,type,carrier,tech,capacity,bus,marginal_cost,fix_cost
+gas,dispatchable,gas,gt,130000,Mid,46.69,6000

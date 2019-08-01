@@ -1,0 +1,4 @@
+name,type,carrier,tech,capacity,bus,profile,fix_cost
+Mid-photovoltaics,volatile,solar,pv,50000,Mid,Mid-pv-profile,12000
+North-photovoltaics,volatile,solar,pv,4000,North,North-pv-profile,12000
+South-photovoltaics,volatile,solar,pv,6000,South,South-pv-profile,12000

@@ -1,0 +1,4 @@
+name,amount,profile,type,bus
+Mid-demand,1,Mid-electricity-load-profile,load,Mid
+South-demand,1,South-electricity-load-profile,load,South
+North-demand,1,North-electricity-load-profile,load,North

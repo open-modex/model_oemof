@@ -1,0 +1,4 @@
+name,bus,capacity,carrier,efficiency,loss,marginal_cost,storage_capacity,tech,type,inital_storage_level,fix_cost
+Mid-phs,Mid,500,water,0.8836,0,0.02,500,phs,storage,0.5,20000
+South-phs,South,2500,water,0.8836,0,0.02,5000,phs,storage,0.5,20000
+North-phs,North,100,water,0.8836,0,0.02,200,phs,storage,0.5,20000
