@@ -56,6 +56,7 @@ for pk in packages:
 
     # store model statistics
     meta_results[pk] = outputlib.processing.meta_results(m)
+    meta_results[pk]['obj_add_fix_cost'] = meta_results[pk]['objective'] + fix_cost
 
 
 # view meta results
@@ -64,11 +65,12 @@ columns = [
     'Number of variables', 'Number of nonzeros']
 
 values = [
-    [name, v['objective']] + [v['problem'][c] for c in columns]
+    [name, v['objective'], v['obj_add_fix_cost']]
+     + [v['problem'][c] for c in columns]
     for name, v in meta_results.items()]
 
 fig = go.Figure(data=[go.Table(
-    header=dict(values=['Name', 'Objective'] + columns),
+    header=dict(values=['Name', 'Objective', 'With fixed cost'] + columns),
     cells=dict(values=np.array(values).T))])
 
 fig.update_layout(
