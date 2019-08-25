@@ -32,6 +32,7 @@ for pk in packages:
         "results", pk)
     if not os.path.exists(results_path):
         os.makedirs(results_path)
+        os.makedirs(os.path.join(results_path, "output"))
 
     build_time = time.time()
 
@@ -64,7 +65,7 @@ for pk in packages:
     meta_results[pk] = outputlib.processing.meta_results(m)
     meta_results[pk]['obj_add_fix_cost'] = meta_results[pk]['objective'] + fix_cost
 
-    # pp.write_results(m, results_path)
+    pp.write_results(m, os.path.join(results_path, "output"))
 
     # POC write results in modex format
     results = {
