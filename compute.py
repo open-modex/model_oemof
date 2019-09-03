@@ -48,7 +48,7 @@ for pk in packages:
         "results", "oemof", ni)
     if not os.path.exists(results_path):
         os.makedirs(results_path)
-        os.makedirs(os.path.join(results_path, "output"))
+        # os.makedirs(os.path.join(results_path, "output"))
 
     build_time = time.time()
 
@@ -81,17 +81,17 @@ for pk in packages:
     meta_results[pk] = outputlib.processing.meta_results(m)
     meta_results[pk]['obj_add_fix_cost'] = meta_results[pk]['objective'] + fix_cost
 
-    pp.write_results(m, os.path.join(results_path, "output"))
+    # pp.write_results(m, os.path.join(results_path, "output"))
 
     # POC write results in modex format
     results = {
-        "timebuild_oemof.csv":
-            "Time required to build the model,Seconds,%s\n" % build_time,
-        "constraints_oemof.csv":
+    #    "timebuild.csv":
+    #        "Time required to build the model,Seconds,%s\n" % build_time,
+        "constraints.csv":
             "Number of constraints,#,%s\n" % meta_results[pk]['problem']['Number of constraints'],
-        "variables_omeof.csv":
+        "variables.csv":
             "Number of variables,#,%s\n" % meta_results[pk]['problem']['Number of variables'],
-        "objective_omeof.csv":
+        "objective.csv":
             "Objective value,EURO,%s\n" % meta_results[pk]['obj_add_fix_cost']
     }
 
@@ -101,8 +101,8 @@ for pk in packages:
     for b in buses:
         production.append(supply_results(results=m.results, es=m.es, bus=[b]))
 
-    pd.concat(production, axis=1).\
-        to_csv(os.path.join(results_path, "production_oemof" + ".csv"))
+    #pd.concat(production, axis=1).\
+    #    to_csv(os.path.join(results_path, "production" + ".csv"))
 
     for fn, content in results.items():
         with open(os.path.join(results_path, fn), "w") as f:
