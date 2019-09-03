@@ -3,6 +3,7 @@
 
 import os
 import time
+import urllib
 
 from oemof.solph import EnergySystem, Model
 from oemof.tabular.tools.postprocessing import supply_results
@@ -20,6 +21,19 @@ import pandas as pd
 import plotly.graph_objs as go
 import plotly.offline as offline
 
+from markdown import markdown
+from bs4 import BeautifulSoup
+
+# Get open_MODEX/results/README.md markdown mapping table
+res = urllib.request.urlopen("https://raw.githubusercontent.com/open-modex/results/master/README.md")
+md = markdown(res.read().decode('utf-8'), extensions=['tables'])
+tables = BeautifulSoup(md, features="html.parser").findAll('table')
+rows = lambda t: t.find('tbody').findAll('tr')
+cells = lambda r: list(c.text for c in r.findAll('td'))
+mapping, filenames = [pd.DataFrame([cells(r) for r in rows(t)]) for t in tables]
+mapping.columns = ['id', 'name', 'description']
+mapping.set_index('name', inplace=True)
+
 # path to directory with datapackage to load
 path = "datapackages/"
 packages = os.listdir(path)
@@ -27,9 +41,11 @@ meta_results = {}
 
 for pk in packages:
 
+    ni = mapping.loc[pk, 'id']  # numeric identifier
+
     # create a results directory
     results_path = os.path.join(
-        "results", pk)
+        "results", "oemof", ni)
     if not os.path.exists(results_path):
         os.makedirs(results_path)
         os.makedirs(os.path.join(results_path, "output"))
