@@ -1,2 +1,2 @@
 name,type,carrier,tech,capacity,bus,marginal_cost,fix_cost
-gas,dispatchable,gas,gt,12000,South,46.69,6000
+South-gas,dispatchable,gas,gt,12000,South,46.69,6000

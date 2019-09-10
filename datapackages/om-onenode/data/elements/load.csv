@@ -1,2 +1,2 @@
 name,amount,profile,type,bus
-demand,1,electricity-load-profile,load,South
+South-demand,1,electricity-load-profile,load,South
