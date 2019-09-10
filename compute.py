@@ -88,11 +88,11 @@ for pk in packages:
     #    "timebuild.csv":
     #        "Time required to build the model,Seconds,%s\n" % build_time,
         "constraints.csv":
-            "Number of constraints,#,%s\n" % meta_results[pk]['problem']['Number of constraints'],
+            "%s\n" % meta_results[pk]['problem']['Number of constraints'],
         "variables.csv":
-            "Number of variables,#,%s\n" % meta_results[pk]['problem']['Number of variables'],
+            "%s\n" % meta_results[pk]['problem']['Number of variables'],
         "objective.csv":
-            "Objective value,EURO,%s\n" % meta_results[pk]['obj_add_fix_cost']
+            "%s\n" % meta_results[pk]['obj_add_fix_cost']
     }
 
     buses = [b.label for b in m.es.nodes if isinstance(b, Bus)]
@@ -101,8 +101,11 @@ for pk in packages:
     for b in buses:
         production.append(supply_results(results=m.results, es=m.es, bus=[b]))
 
-    #pd.concat(production, axis=1).\
-    #    to_csv(os.path.join(results_path, "production" + ".csv"))
+    # simplify column MultiIndex to comply to results guidelines
+    production = pd.concat(production, axis=1)
+    production.columns = production.columns.droplevel(level='type').swaplevel()
+    production.columns = pd.MultiIndex.from_tuples([(i.label, k.label.split('-')[1]) for i, k in production.columns.values])
+    production.to_csv(os.path.join(results_path, "production_elec" + ".csv"))
 
     for fn, content in results.items():
         with open(os.path.join(results_path, fn), "w") as f:
