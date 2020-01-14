@@ -1,0 +1,6 @@
+name,type,capacity,carrier,tech,bus,profile,marginal_cost
+wind_power_be,volatile,12.38,wind_power,mandatory,BE,w_be,0
+solar_power_be,volatile,86.95,solar_power,mandatory,BE,s_be,0
+wind_power_bb,volatile,6358.14,wind_power,mandatory,BB,w_bb,0
+solar_power_bb,volatile,3205.76,solar_power,mandatory,BB,s_bb,0
+hydro_power,volatile,4.86,hydro_power,mandatory,BB,h_bb,0

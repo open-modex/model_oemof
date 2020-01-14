@@ -1,0 +1,3 @@
+name,type,bus,amount,profile
+demand_be,sink,BE,1,demand-profile-be
+demand_bb,sink,BB,1,demand-profile-bb

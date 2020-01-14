@@ -1,0 +1,2 @@
+name,type,from_bus,to_bus,capacity,loss,marginal_cost
+BE_BB_link,link,BE,BB,3000,0.1,0
