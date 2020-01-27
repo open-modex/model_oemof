@@ -285,7 +285,7 @@
                     },
                     {
                         "name": "capacity",
-                        "type": "integer",
+                        "type": "number",
                         "format": "default"
                     },
                     {
