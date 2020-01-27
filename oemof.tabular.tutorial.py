@@ -34,6 +34,12 @@ es = solph.EnergySystem.from_datapackage(
     },
 )
 
+### "add-timeindex"
+# Needed on Windows OS
+es.timeindex = pd.date_range(
+    "2016-01-01T00:00:00+0100", periods=8784, freq="60min"
+)
+
 ### "solve"
 
 om = solph.Model(es)
