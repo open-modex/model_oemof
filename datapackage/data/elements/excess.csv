@@ -1,0 +1,3 @@
+name,bus,type,carrier,tech,capacity,marginal_cost
+be-shortage,BE,shortage,electricity,shortage,1.00E+11,3000
+bb-shortage,BB,shortage,electricity,shortage,1.00E+11,3000
