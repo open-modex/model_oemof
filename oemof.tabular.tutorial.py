@@ -2,7 +2,7 @@
 
 import os
 
-from oemof.tabular.facades import Load, Dispatchable, Volatile, Link, Bus
+from oemof.tabular.facades import Load, Dispatchable, Volatile, Link, Bus, Excess, Shortage
 import oemof.solph as solph
 import oemof.tabular.datapackage
 import oemof.tabular.datapackage.building as dp
@@ -14,8 +14,8 @@ dp.infer_metadata(
     path='datapackage/',
     package_name="minimal-oemof-tabular-example",
     foreign_keys={
-        "bus": ["volatile", "load", "dispatchable"],
-        "profile": ["load"],
+        "bus": ["volatile", "load", "dispatchable", "excess", "shortage"],
+        "profile": ["load", "volatile"],
         "from_to_bus": ["link"],
     },
 )
@@ -28,7 +28,9 @@ es = solph.EnergySystem.from_datapackage(
         "dispatchable": Dispatchable,
         "sink": Load,
         "link": Link,
-        "volatile": Volatile
+        "volatile": Volatile,
+        "excess": Excess,
+        "shortage": Shortage
     },
 )
 
@@ -36,20 +38,27 @@ es = solph.EnergySystem.from_datapackage(
 
 om = solph.Model(es)
 
-om.solve(solver="gurobi")
+om.solve(solver="glpk")
 
 ### "Results"
-
-from pprint import pprint as pp
-
 import oemof.outputlib.processing as process
 
+print(process.meta_results(om))
 
-results = process.results(om)
-results = {
-    (s.label, t.label): list(
-        results[(s, t)]["sequences"]["flow"]
-    )
-    for (s, t) in results
-}
-pp(results)
+#from pprint import pprint as pp
+#results = process.results(om)
+#
+#results = {
+#    (s.label, t.label): list(
+#        results[(s, t)]["sequences"]["flow"]
+#    )
+#    for (s, t) in results
+#}
+#pp(results)
+#
+#import oemof.outputlib.views as views
+#import matplotlib.pyplot as plt
+#
+#results = views.convert_keys_to_strings(results)
+#results[('BB', 'bb-excess')]['sequences'].plot()
+#plt.show()
