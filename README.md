@@ -4,7 +4,7 @@ This repository contains all model development using oemof within the open_MODEX
 
 # How to run on Windows OS
 
-Currently the easiest way to run it on Windows OS is to use the Windows Subsystem for Linux. This is an optional feature. Search for 'Turn windows features on or off'. You will get access to a control panel, select 'Windows Subsystem for Linux'.
+Currently the easiest way to run it on Windows OS is to use the Windows Subsystem for Linux. This is an optional feature. Search for `Turn windows features on or off`. You will get access to a control panel, select `Windows Subsystem for Linux`.
 
 Then proceed to install the `Ubuntu 18.04 LTS` App from the `Microsoft Store`. Launch the app after installation, you will land in an Ubuntu bash shell.
 
