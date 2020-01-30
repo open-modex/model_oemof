@@ -2,7 +2,13 @@
 
 This repository contains all model development using oemof within the open_MODEX project.
 
-# How to run on Windows OS
+# Windows OS
+
+## Warning
+
+I cannot say anything about the safety of this approach. Please be aware of the fact, that the `Subsystem` mentioned below has access to the whole filesystem and code is executed from a variety of different sources, e.g. Python packages.
+
+## My approach on a virtual machine (Windows 10)
 
 Currently the easiest way to run it on Windows OS is to use the Windows Subsystem for Linux. This is an optional feature. Search for `Turn windows features on or off`. You will get access to a control panel, select `Windows Subsystem for Linux`.
 
