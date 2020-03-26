@@ -1,6 +1,6 @@
 name,type,bus,capacity,profile,fixed,carrier,tech
-SolarBE,volatile,BE,86.949,PVprofileBE,FALSE,solar,solarPV
-SolarBB,volatile,BB,3205.75601,PVprofileBB,FALSE,solar,solarPV
-WindBE,volatile,BE,12.382,WindprofileBE,FALSE,wind,onshore
-WindBB,volatile,BB,6358.136,WindprofileBB,FALSE,wind,onshore
-HydroBB,volatile,BB,4.855,HydroprofileBB,FALSE,hydro,runofriver
+SolarBE,volatile,BE,86.949,PVprofileBE,true,solar,solarPV
+SolarBB,volatile,BB,3205.75601,PVprofileBB,true,solar,solarPV
+WindBE,volatile,BE,12.382,WindprofileBE,true,wind,onshore
+WindBB,volatile,BB,6358.136,WindprofileBB,true,wind,onshore
+HydroBB,volatile,BB,4.855,HydroprofileBB,true,hydro,runofriver

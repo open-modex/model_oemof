@@ -1,3 +1,3 @@
 name,bus,type,carrier,tech,marginal_cost
-be-excess,BE,excess,electricity,excess,0
-bb-excess,BB,excess,electricity,excess,0
+be-shortage,BE,shortage,electricity,shortage,3000
+bb-shortage,BB,shortage,electricity,shortage,3000
