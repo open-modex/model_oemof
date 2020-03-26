@@ -1,6 +1,6 @@
-name,type,capacity,carrier,tech,bus,profile,marginal_cost
-wind_power_be,volatile,12.38,wind_power,mandatory,BE,w_be,0
-solar_power_be,volatile,86.95,solar_power,mandatory,BE,s_be,0
-wind_power_bb,volatile,6358.14,wind_power,mandatory,BB,w_bb,0
-solar_power_bb,volatile,3205.76,solar_power,mandatory,BB,s_bb,0
-hydro_power,volatile,4.86,hydro_power,mandatory,BB,h_bb,0
+name,type,bus,capacity,profile,fixed,carrier,tech
+SolarBE,volatile,BE,86.949,PVprofileBE,FALSE,solar,solarPV
+SolarBB,volatile,BB,3205.75601,PVprofileBB,FALSE,solar,solarPV
+WindBE,volatile,BE,12.382,WindprofileBE,FALSE,wind,onshore
+WindBB,volatile,BB,6358.136,WindprofileBB,FALSE,wind,onshore
+HydroBB,volatile,BB,4.855,HydroprofileBB,FALSE,hydro,runofriver
