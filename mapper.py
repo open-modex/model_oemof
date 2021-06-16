@@ -450,9 +450,11 @@ def export(mappings, meta, results, year):
         writer = DictWriter(f, fieldnames=header, delimiter=";", quotechar="'")
         writer.writeheader()
         writer.writerows(
-            dict(
-                id=i, **{k: str(s[k]).replace("'", '"') for k in s}, **defaults
-            )
+            {
+                "id": i,
+                **{k: str(s[k]).replace("'", '"') for k in s},
+                **defaults,
+            }
             for i, s in enumerate(series)
         )
 
@@ -492,12 +494,7 @@ def export(mappings, meta, results, year):
     ]
 
     losses = [
-        dict(
-            chain(
-                s.items(),
-                [("value", s["value"] * 0.03), ("parameter_name", "losses")],
-            )
-        )
+        {**s, "value": s["value"] * 0.03, "parameter_name": "losses"}
         for s in sums
         if s["parameter_name"] == "energy flow"
     ]
@@ -533,15 +530,11 @@ def export(mappings, meta, results, year):
 
     emissions.append(
         reduce(
-            lambda d1, d2: dict(
-                chain(
-                    d1.items(),
-                    [
-                        ("region", sorted(set(d1["region"] + d2["region"]))),
-                        ("value", d1["value"] + d2["value"]),
-                    ],
-                )
-            ),
+            lambda d1, d2: {
+                **d1,
+                "region": sorted(set(d1["region"] + d2["region"])),
+                "value": d1["value"] + d2["value"],
+            },
             emissions,
         )
     )
@@ -555,35 +548,32 @@ def export(mappings, meta, results, year):
         "unit": "€/a",
     }
     costs = [
-        dict(
+        {
             **cost_defaults,
-            **{"parameter_name": "variable cost", "value": objective},
-        )
+            "parameter_name": "variable cost",
+            "value": objective,
+        }
     ]
 
     costs.append(
-        dict(
+        {
             **cost_defaults,
-            **{
-                "parameter_name": "fixed cost",
-                "value": sum(
-                    m["fixed costs"]
-                    for row in series
-                    for m in [mappings[Key.from_dictionary(row)]]
-                    if "fixed costs" in m
-                ),
-            },
-        )
+            "parameter_name": "fixed cost",
+            "value": sum(
+                m["fixed costs"]
+                for row in series
+                for m in [mappings[Key.from_dictionary(row)]]
+                if "fixed costs" in m
+            ),
+        }
     )
 
     costs.append(
-        dict(
+        {
             **cost_defaults,
-            **{
-                "parameter_name": "system cost",
-                "value": sum(cost["value"] for cost in costs),
-            },
-        )
+            "parameter_name": "system cost",
+            "value": sum(cost["value"] for cost in costs),
+        }
     )
 
     def group(row):
@@ -659,9 +649,11 @@ def export(mappings, meta, results, year):
         writer = DictWriter(f, fieldnames=header, delimiter=";", quotechar="'")
         writer.writeheader()
         writer.writerows(
-            dict(
-                id=i, **{k: str(s[k]).replace("'", '"') for k in s}, **defaults
-            )
+            {
+                "id": i,
+                **{k: str(s[k]).replace("'", '"') for k in s},
+                **defaults,
+            }
             for i, s in enumerate(
                 chain(sums, losses, emissions, costs, [renewables])
             )
