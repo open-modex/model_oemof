@@ -10,7 +10,7 @@ from typing import Tuple
 import json
 import sys
 
-from frictionless import Package, Resource
+from frictionless import Detector, Package, Resource
 from loguru import logger
 from oemof.solph import (
     Bus,
@@ -685,7 +685,8 @@ def export(mappings, meta, results, year):
                 "path": str(path / csvfile),
                 "dialect": {"delimiter": ";", "quoteChar": "|"},
                 "profile": "tabular-data-resource",
-            }
+            },
+            detector=Detector(field_float_numbers=True),
         )
         for csvfile in [
             "oed_scalar_output.csv",
