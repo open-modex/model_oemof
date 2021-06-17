@@ -194,6 +194,33 @@ def demands(mappings, buses):
     ]
 
 
+def transmission(line, buses, ratios):
+    flow_bus = Bus(label=label(line, "flow-bus"))
+    flow = Sink(
+        label=label(line, "energy flow"),
+        inputs={
+            flow_bus: Flow(min=0, nominal_value=line[1]["installed capacity"])
+        },
+    )
+
+    lines = [
+        Transformer(
+            label=label(line, "line")._replace(regions=regions),
+            inputs={source: Flow()},
+            outputs={flow_bus: Flow(), target: Flow()},
+            conversion_factors={
+                flow_bus: ratios[regions[0]]["ir"],
+                source: ratios[regions[0]]["ir"],
+                target: ratios[regions[1]]["or"],
+            },
+        )
+        for regions in [line[0].regions, tuple(reversed(line[0].regions))]
+        for source in [buses[(regions[0], line[0].vectors[0])]]
+        for target in [buses[(regions[1], line[0].vectors[1])]]
+    ]
+    return lines + [flow_bus, flow]
+
+
 def lines(mappings, buses):
     ratios = {
         ratio[0].regions[0]: {
@@ -213,25 +240,11 @@ def lines(mappings, buses):
     ratios["Baltic"] = {"ir": 1.0, "or": 0.97}
     ratios["North"] = {"ir": 1.0, "or": 0.97}
     return [
-        Transformer(
-            label=label(line, "line")._replace(regions=regions),
-            inputs={
-                source: Flow(
-                    min=0, nominal_value=line[1]["installed capacity"]
-                )
-            },
-            outputs={target: Flow()},
-            conversion_factors={
-                source: ratios[regions[0]]["ir"],
-                target: ratios[regions[1]]["or"],
-            },
-        )
+        node
         for line in find(
             mappings, "installed capacity", technology=("transmission", "hvac")
         )
-        for regions in [line[0].regions, tuple(reversed(line[0].regions))]
-        for source in [buses[(regions[0], line[0].vectors[0])]]
-        for target in [buses[(regions[1], line[0].vectors[1])]]
+        for node in transmission(line, buses, ratios)
     ]
 
 
@@ -390,7 +403,9 @@ def export(mappings, meta, results, year):
     objective = meta["objective"]
 
     transmissions = [
-        k for k in results if (k[1] is not None) and (k[1].label[-1] == "line")
+        k
+        for k in results
+        if (k[1] is not None) and (k[1].label[-1] == "energy flow")
     ]
     sources = [k for k in results if type(k[0]) is Source]
     storages = [
@@ -398,7 +413,7 @@ def export(mappings, meta, results, year):
     ]
 
     flow = namedtuple("flow", ["key", "source", "name"])
-    flows = [flow(line, line[1], "energy flow") for line in transmissions]
+    flows = [flow(line, line[1], line[1].label.name) for line in transmissions]
     flows.extend(
         [
             flow(source, source[0], "electricity generation")
