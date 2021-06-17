@@ -195,6 +195,8 @@ def demands(mappings, buses):
 
 
 def transmission(line, buses, ratios):
+    loss_bus = Bus(label=label(line, "loss-bus"))
+    loss = Sink(label=label(line, "losses"), inputs={loss_bus: Flow()})
     flow_bus = Bus(label=label(line, "flow-bus"))
     flow = Sink(
         label=label(line, "energy flow"),
@@ -207,9 +209,10 @@ def transmission(line, buses, ratios):
         Transformer(
             label=label(line, "line")._replace(regions=regions),
             inputs={source: Flow()},
-            outputs={flow_bus: Flow(), target: Flow()},
+            outputs={flow_bus: Flow(), loss_bus: Flow(), target: Flow()},
             conversion_factors={
                 flow_bus: ratios[regions[0]]["ir"],
+                loss_bus: 1 - ratios[regions[1]]["or"],
                 source: ratios[regions[0]]["ir"],
                 target: ratios[regions[1]]["or"],
             },
@@ -218,7 +221,7 @@ def transmission(line, buses, ratios):
         for source in [buses[(regions[0], line[0].vectors[0])]]
         for target in [buses[(regions[1], line[0].vectors[1])]]
     ]
-    return lines + [flow_bus, flow]
+    return lines + [flow_bus, flow, loss_bus, loss]
 
 
 def lines(mappings, buses):
@@ -416,6 +419,14 @@ def export(mappings, meta, results, year):
     flows = [flow(line, line[1], line[1].label.name) for line in transmissions]
     flows.extend(
         [
+            flow(key, key[0], key[1].label.name)
+            for key in results
+            if key[1] is not None
+            and getattr(key[1].label, "name", "") == "losses"
+        ]
+    )
+    flows.extend(
+        [
             flow(source, source[0], "electricity generation")
             for source in sources
         ]
@@ -500,12 +511,6 @@ def export(mappings, meta, results, year):
             "unit": "GWh/a",
         }
         for key, group in groupby(series, group)
-    ]
-
-    losses = [
-        {**s, "value": s["value"] * 0.03, "parameter_name": "losses"}
-        for s in sums
-        if s["parameter_name"] == "energy flow"
     ]
 
     series = sorted(series, key=lambda row: row["region"])
@@ -595,8 +600,7 @@ def export(mappings, meta, results, year):
         )
 
     series = sorted(series, key=group)
-    losses.extend(
-        [
+    storage_losses = [
             {
                 "region": regions,
                 "input_energy_vector": key[0],
@@ -633,7 +637,6 @@ def export(mappings, meta, results, year):
                 key=group,
             )
         ]
-    )
 
     renewables = {
         "region": regions,
@@ -664,7 +667,7 @@ def export(mappings, meta, results, year):
                 **defaults,
             }
             for i, s in enumerate(
-                chain(sums, losses, emissions, costs, [renewables])
+                chain(sums, storage_losses, emissions, costs, [renewables])
             )
         )
 
