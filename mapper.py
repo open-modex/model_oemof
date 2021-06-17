@@ -412,7 +412,8 @@ def export(mappings, meta, results, year):
     transmissions = [
         k
         for k in results
-        if (k[1] is not None) and (k[1].label[-1] == "energy flow")
+        if k[1] is not None
+        and getattr(k[1].label, "name", "") == "energy flow"
     ]
     sources = [k for k in results if type(k[0]) is Source]
     storages = [
