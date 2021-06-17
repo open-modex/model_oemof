@@ -226,8 +226,8 @@ def lines(mappings, buses):
                 )
             },
             conversion_factors={
-                source: ratios[regions[0]]["or"],
-                target: ratios[regions[1]]["ir"],
+                source: ratios[regions[0]]["ir"],
+                target: ratios[regions[1]]["or"],
             },
         )
         for line in find(
