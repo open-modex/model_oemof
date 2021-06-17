@@ -216,28 +216,26 @@ def lines(mappings, buses):
         Transformer(
             label=label(line, "line")._replace(regions=regions),
             inputs={
-                buses[(regions[0], line[0].vectors[0])]: Flow(
+                source: Flow(
                     min=0, nominal_value=line[1]["installed capacity"]
                 )
             },
             outputs={
-                buses[(regions[1], line[0].vectors[1])]: Flow(
+                target: Flow(
                     min=0, nominal_value=line[1]["installed capacity"]
                 )
             },
             conversion_factors={
-                buses[(regions[0], line[0].vectors[0])]: ratios[regions[0]][
-                    "or"
-                ],
-                buses[(regions[1], line[0].vectors[1])]: ratios[regions[1]][
-                    "ir"
-                ],
+                source: ratios[regions[0]]["or"],
+                target: ratios[regions[1]]["ir"],
             },
         )
         for line in find(
             mappings, "installed capacity", technology=("transmission", "hvac")
         )
         for regions in [line[0].regions, tuple(reversed(line[0].regions))]
+        for source in [buses[(regions[0], line[0].vectors[0])]]
+        for target in [buses[(regions[1], line[0].vectors[1])]]
     ]
 
 
