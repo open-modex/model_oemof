@@ -99,6 +99,10 @@ class Key(dict):
 
 def reducer(dictionary, value):
     key = Key.from_dictionary(value)
+    # Expand parameters which are applied to multiple regions by having more
+    # than two regions in the "region" key (two regions would mean
+    # ["source", "target"] instead), to a list copies of the same parameter
+    # with only one "region".
     keys = (
         [replace(key, region=(kr,)) for kr in key.region]
         if len(key.region) > 2
