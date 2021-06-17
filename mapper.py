@@ -601,42 +601,41 @@ def export(mappings, meta, results, year):
 
     series = sorted(series, key=group)
     storage_losses = [
-            {
-                "region": regions,
-                "input_energy_vector": key[0],
-                "output_energy_vector": key[1],
-                "technology": key[2],
-                "technology_type": key[3],
-                "parameter_name": "losses",
-                "value": sum(
-                    sum(row["series"])
-                    * (
-                        1
-                        - m[
-                            (
-                                "in"
-                                if row["parameter_name"] == "input energy"
-                                else "out"
-                            )
-                            + "put ratio"
-                        ]
-                    )
-                    for row in group
-                    for m in [mappings[Key.from_dictionary(row)]]
+        {
+            "region": regions,
+            "input_energy_vector": key[0],
+            "output_energy_vector": key[1],
+            "technology": key[2],
+            "technology_type": key[3],
+            "parameter_name": "losses",
+            "value": sum(
+                sum(row["series"])
+                * (
+                    1
+                    - m[
+                        (
+                            "in"
+                            if row["parameter_name"] == "input energy"
+                            else "out"
+                        )
+                        + "put ratio"
+                    ]
                 )
-                / 1000,
-                "unit": "GWh/a",
-            }
-            for key, group in groupby(
-                (
-                    row
-                    for row in series
-                    if row["parameter_name"]
-                    in ["input energy", "output energy"]
-                ),
-                key=group,
+                for row in group
+                for m in [mappings[Key.from_dictionary(row)]]
             )
-        ]
+            / 1000,
+            "unit": "GWh/a",
+        }
+        for key, group in groupby(
+            (
+                row
+                for row in series
+                if row["parameter_name"] in ["input energy", "output energy"]
+            ),
+            key=group,
+        )
+    ]
 
     renewables = {
         "region": regions,
