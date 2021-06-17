@@ -220,11 +220,7 @@ def lines(mappings, buses):
                     min=0, nominal_value=line[1]["installed capacity"]
                 )
             },
-            outputs={
-                target: Flow(
-                    min=0, nominal_value=line[1]["installed capacity"]
-                )
-            },
+            outputs={target: Flow()},
             conversion_factors={
                 source: ratios[regions[0]]["ir"],
                 target: ratios[regions[1]]["or"],
