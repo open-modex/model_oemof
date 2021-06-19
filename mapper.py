@@ -272,7 +272,7 @@ def trades(mappings, buses):
 def fixed(mappings, buses):
     return [
         Source(
-            label=label(source, "fixed"),
+            label=label(source, "electricity generation"),
             outputs={
                 buses[(source[0].regions[0], source[0].vectors[1])]: Flow(
                     fix=source[1]["capacity factor"],
@@ -296,7 +296,7 @@ def flexible(mappings, buses):
     co2c = find(mappings, vectors=("unknown", "co2"))[0][1]["emission costs"]
     return [
         Source(
-            label=label(f, "flexible"),
+            label=label(f, "electricity generation"),
             outputs={
                 buses[(f[0].regions[0], f[0].vectors[1])]: Flow(
                     nominal_value=f[1]["installed capacity"],
@@ -431,10 +431,7 @@ def export(mappings, meta, results, year):
         ]
     )
     flows.extend(
-        [
-            flow(source, source[0], "electricity generation")
-            for source in sources
-        ]
+        [flow(source, source[0], source[0].label.name) for source in sources]
     )
     flows.extend(
         [
