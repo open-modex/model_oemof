@@ -780,7 +780,7 @@ def find(d, *xs, **kws):
         (k, d[k])
         for k in d
         if all([(p in chain(k.items(), d[k].items())) for p in kws.items()])
-        if all([(x in chain(k, d[k])) for x in xs])
+        if all([(x in chain(k, d[k], k.values(), d[k].values())) for x in xs])
     ]
     return results
 
