@@ -156,9 +156,15 @@ def from_json():
         for mapping in mappings
     }
     result["concrete"]["objects"] = reduced
-    result[2016] = {k: reduced[k] for k in reduced if k.year == 2016}
-    result["techs"] = techs(result[2016])
-    result["vectors"] = vectors(result[2016])
+    years = [2016, 2030, 2050]
+    result.update(
+        {
+            year: {k: reduced[k] for k in reduced if k.year == year}
+            for year in years
+        }
+    )
+    result["techs"] = {year: techs(result[year]) for year in years}
+    result["vectors"] = {year: vectors(result[year]) for year in years}
     # assertion: len(o.region) == 2
     # =>  o.technology == ('transmission', 'hvac')
     # and o.vectors    == ('electricity', 'electricity')
