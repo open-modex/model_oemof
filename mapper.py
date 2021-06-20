@@ -712,7 +712,7 @@ def export(mappings, meta, results, year):
         "scenario": "base",
         "region": str({"DE": DE}).replace("'", '"'),
         "year": year,
-        "source": "",
+        "source": "oemof",
         "comment": [
             "The scenario depicts the electricity sector in Germany."
             " It is divided into 18 nodes, 16 nodes as federal states and 2"
