@@ -365,6 +365,22 @@ def build(mappings, year):
     buses = {rv: Bus(label=rv) for rv in rvs}
 
     es.add(*buses.values())
+    es.add(
+        *[
+            Sink(
+                label=Label(
+                    regions=(rv[0],),
+                    technology=("ALL", "ALL"),
+                    vectors=(rv[1], rv[1]),
+                    name="curtailment",
+                ),
+                inputs={buses[rv]: Flow()},
+            )
+            for rv in buses
+            if rv[1] == "electricity"
+        ]
+    )
+
     es.add(*demands(mappings, buses))
     es.add(*lines(mappings, buses))
     es.add(*trades(mappings, buses))
@@ -430,6 +446,20 @@ def export(mappings, meta, results, year):
             and getattr(key[1].label, "name", "") == "losses"
         ]
     )
+
+    flows.extend(
+        [
+            # Key[1] is not actually the source, but it should work regardless.
+            # Key[0] would be the actual source, but it's a `Bus` without a
+            # usable label, so using the target to get the necessary parameters
+            # should be a viable workaround.
+            flow(key, key[1], key[1].label.name)
+            for key in results
+            if key[1] is not None
+            and getattr(key[1].label, "name", "") == "curtailment"
+        ]
+    )
+
     flows.extend(
         [flow(source, source[0], source[0].label.name) for source in sources]
     )
@@ -536,7 +566,8 @@ def export(mappings, meta, results, year):
             (
                 row
                 for row in series
-                if "emission factor" in mappings[Key.from_dictionary(row)]
+                if "emission factor"
+                in mappings.get(Key.from_dictionary(row), {})
             ),
             lambda row: row["region"],
         )
@@ -578,7 +609,7 @@ def export(mappings, meta, results, year):
             "value": sum(
                 m["fixed costs"]
                 for row in series
-                for m in [mappings[Key.from_dictionary(row)]]
+                for m in [mappings.get(Key.from_dictionary(row), {})]
                 if "fixed costs" in m
             ),
         }
