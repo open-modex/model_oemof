@@ -255,10 +255,6 @@ def lines(mappings, buses):
             vectors=("electricity", "electricity"),
         )
     }
-    # TODO: File an issue because there's no (el, el) input/output ratio for
-    #       the "Baltic" and the "North" region.
-    ratios["Baltic"] = {"ir": 1.0, "or": 0.97}
-    ratios["North"] = {"ir": 1.0, "or": 0.97}
     return [
         node
         for line in find(
