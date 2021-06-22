@@ -638,10 +638,7 @@ def export(mappings, meta, results, year):
             **cost_defaults,
             "parameter_name": "fixed cost",
             "value": sum(
-                m["fixed costs"]
-                * m.get(
-                    "installed capacity", 1 if "variable costs" in m else 0
-                )
+                m["fixed costs"] * m.get("installed capacity", 0)
                 for row in series
                 for m in [mappings.get(Key.from_dictionary(row), {})]
                 if "fixed costs" in m
