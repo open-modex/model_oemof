@@ -407,6 +407,25 @@ def build(mappings, year):
             if rv[1] == "electricity"
         ]
     )
+    maxvc = (
+        max(vc[1]["variable costs"] for vc in find(mappings, "variable costs"))
+        + 0.01
+    )
+    es.add(
+        *[
+            Source(
+                label=Label(
+                    regions=(rv[0],),
+                    technology=("ALL", "ALL"),
+                    vectors=(rv[1], rv[1]),
+                    name="slack",
+                ),
+                outputs={buses[rv]: Flow(variable_costs=maxvc)},
+            )
+            for rv in buses
+            if rv[1] == "electricity"
+        ]
+    )
 
     es.add(*demands(mappings, buses))
     es.add(*lines(mappings, buses))
@@ -484,6 +503,15 @@ def export(mappings, meta, results, year):
             for key in results
             if key[1] is not None
             and getattr(key[1].label, "name", "") == "curtailment"
+        ]
+    )
+
+    flows.extend(
+        [
+            flow(key, key[0], key[0].label.name)
+            for key in results
+            if key[0] is not None
+            and getattr(key[0].label, "name", "") == "slack"
         ]
     )
 
