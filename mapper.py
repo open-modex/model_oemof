@@ -247,6 +247,13 @@ def lines(mappings, buses):
             technology=("transmission", "hvac"),
             vectors=("electricity", "electricity"),
         )
+        + find(
+            mappings,
+            "input ratio",
+            "output ratio",
+            technology=("transmission", "DC"),
+            vectors=("electricity", "electricity"),
+        )
     }
     # TODO: File an issue because there's no (el, el) input/output ratio for
     #       the "Baltic" and the "North" region.
@@ -256,6 +263,9 @@ def lines(mappings, buses):
         node
         for line in find(
             mappings, "installed capacity", technology=("transmission", "hvac")
+        )
+        + find(
+            mappings, "installed capacity", technology=("transmission", "DC")
         )
         for node in transmission(line, buses, ratios)
     ]
