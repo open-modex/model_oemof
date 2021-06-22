@@ -272,17 +272,32 @@ def lines(mappings, buses):
 
 
 def trades(mappings, buses):
-    return [
+    imports = find(mappings, technology=("transmission", "trade import"))
+    exports = find(mappings, technology=("transmission", "trade export"))
+    sinks = [
         Sink(
-            label=label(trade, "trade"),
+            label=label(trade, "export"),
             inputs={
                 buses[(trade[0].regions[0], trade[0].vectors[0])]: Flow(
                     fix=trade[1]["trade volume"], nominal_value=1
                 )
             },
         )
-        for trade in find(mappings, technology=("transmission", "trade"))
+        for trade in exports
     ]
+    sources = [
+        Source(
+            label=label(trade, "import"),
+            outputs={
+                buses[(trade[0].regions[0], trade[0].vectors[0])]: Flow(
+                    fix=trade[1]["trade volume"],
+                    nominal_value=trade[1]["installed capacity"],
+                )
+            },
+        )
+        for trade in imports
+    ]
+    return sinks + sources
 
 
 def fixed(mappings, buses):
