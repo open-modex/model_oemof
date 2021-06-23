@@ -395,6 +395,7 @@ def storages(mappings, buses):
             nominal_storage_capacity=(
                 storage[1]["installed capacity"] * storage[1]["E2P ratio"]
             ),
+            initial_storage_level=0,
             inflow_conversion_factor=storage[1]["input ratio"],
             outflow_conversion_factor=storage[1]["output ratio"],
             inputs={
