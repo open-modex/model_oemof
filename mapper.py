@@ -360,11 +360,11 @@ def flexible(mappings, buses):
     }
     fueled = find(mappings, "emission factor", "installed capacity")
     co2c = find(mappings, vectors=("unknown", "co2"))[0][1]["emission costs"]
-    return [
+    sources = [
         Source(
             label=label(f, "electricity generation"),
             outputs={
-                buses[(f[0].regions[0], f[0].vectors[1])]: Flow(
+                source_bus: Flow(
                     nominal_value=f[1]["installed capacity"],
                     variable_costs=(
                         f[1]["variable costs"]
@@ -385,7 +385,38 @@ def flexible(mappings, buses):
             },
         )
         for f in fueled
+        for source_bus in [Bus(label=label(f, "auxiliary-bus"))]
+        for transformer in [
+            Transformer(
+                label=label(f, "auxiliary-transformer"),
+                inputs={source_bus: Flow()},
+                outputs={
+                    buses[(f[0].regions[0], f[0].vectors[1])]: Flow(),
+                    buses[("DE", "co2")]: Flow(),
+                    **(
+                        {buses[("DE", "waste")]: Flow()}
+                        if "waste" in f[0].vectors
+                        else {}
+                    ),
+                },
+                conversion_factors={
+                    buses[("DE", "co2")]: 1
+                    * f[1]["emission factor"]
+                    / f[1]["output ratio"],
+                    **(
+                        {buses[("DE", "waste")]: 1 / f[1]["output ratio"]}
+                        if "waste" in f[0].vectors
+                        else {}
+                    ),
+                },
+            )
+        ]
     ]
+    return (
+        sources
+        + [b for source in sources for b in source.outputs]
+        + [t for source in sources for b in source.outputs for t in b.outputs]
+    )
 
 
 def storages(mappings, buses):
@@ -432,6 +463,40 @@ def build(mappings, year):
     buses = {rv: Bus(label=rv) for rv in rvs}
 
     es.add(*buses.values())
+
+    waste = find(mappings, ("waste", "unknown"))
+    assert len(waste) == 1
+    waste = waste[0]
+    assert waste[0].region[0] == "DE"
+    assert waste[0].vectors[0] == "waste"
+    es.add(
+        Sink(
+            label=label(waste, "waste"),
+            inputs={
+                buses[(waste[0].region[0], waste[0].vectors[0])]: Flow(
+                    nominal_value=waste[1]["natural domestic limit"],
+                    summed_max=1,
+                )
+            },
+        )
+    )
+
+    co2 = find(mappings, ("unknown", "co2"))
+    assert len(co2) == 1
+    co2 = co2[0]
+    assert co2[0].region[0] == "DE"
+    assert co2[0].vectors[1] == "co2"
+    es.add(
+        Sink(
+            label=label(co2, "CO2"),
+            inputs={
+                buses[(co2[0].region[0], co2[0].vectors[1])]: Flow(
+                    nominal_value=co2[1].get("emission limit"), summed_max=1
+                )
+            },
+        )
+    )
+
     es.add(
         *[
             Sink(
