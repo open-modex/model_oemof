@@ -77,7 +77,7 @@ class Key(dict):
             year=(
                 d["year"]
                 if "year" in d
-                else datetime.fromisoformat(str(d["timeindex_start"])).year
+                else pd.to_datetime(str(d["timeindex_start"])).year
             ),
         )
         return cls(**arguments)
