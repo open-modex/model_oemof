@@ -307,11 +307,23 @@ def trades(mappings, buses):
 
 
 def fixed(mappings, buses):
-    return [
+    pv = "photovoltaics"
+    keys = set()
+
+    def bus(mapping):
+        if mapping[0].technology[0] == pv:
+            key = (mapping[0].regions, pv)
+            keys.add(key)
+            buses[key] = buses.get(key, Bus(label=key))
+        else:
+            key = (mapping[0].regions[0], mapping[0].vectors[1])
+        return buses[key]
+
+    sources = [
         Source(
             label=label(source, "electricity generation"),
             outputs={
-                buses[(source[0].regions[0], source[0].vectors[1])]: Flow(
+                bus(source): Flow(
                     fix=source[1]["capacity factor"],
                     nominal_value=source[1]["installed capacity"],
                     variable_costs=source[1].get("variable costs", 0),
@@ -320,6 +332,23 @@ def fixed(mappings, buses):
         )
         for source in find(mappings, "capacity factor")
     ]
+
+    transformers = [
+        Transformer(
+            label=Label(
+                # key[0] is the (one-)tuple of regions
+                key[0],
+                (pv, "unknown"),
+                ("electricity", "electricity"),
+                "collect-pv",
+            ),
+            inputs={buses[key]: Flow()},
+            # key[0][0] should be the unpacked region.
+            outputs={buses[(key[0][0], "electricity")]: Flow()},
+        )
+        for key in keys
+    ]
+    return sources + [buses[key] for key in keys] + transformers
 
 
 def flexible(mappings, buses):
