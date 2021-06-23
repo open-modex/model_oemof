@@ -319,6 +319,7 @@ def fixed(mappings, buses):
             },
         )
         for source in find(mappings, "capacity factor")
+        for renewables in [buses[("DE", "renewable share")]]
         for transformer in [
             Transformer(
                 label=label(source, "splitter",),
@@ -326,12 +327,14 @@ def fixed(mappings, buses):
                     buses[
                         (source[0].regions[0], source[0].vectors[1])
                     ]: Flow(),
+                    renewables: Flow(),
                     **(
                         {buses[(source[0].regions, "photovoltaics")]: Flow()}
                         if source[0].technology[0] == "photovoltaics"
                         else {}
                     ),
                 },
+                conversion_factors={renewables: renewables.share - 1},
             )
         ]
     ]
@@ -383,6 +386,7 @@ def flexible(mappings, buses):
         )
         for f in fueled
         for source_bus in [Bus(label=label(f, "auxiliary-bus"))]
+        for renewables in [buses[("DE", "renewable share")]]
         for transformer in [
             Transformer(
                 label=label(f, "auxiliary-transformer"),
@@ -390,6 +394,7 @@ def flexible(mappings, buses):
                 outputs={
                     buses[(f[0].regions[0], f[0].vectors[1])]: Flow(),
                     buses[("DE", "co2")]: Flow(),
+                    renewables: Flow(),
                     **(
                         {buses[("DE", "waste")]: Flow()}
                         if "waste" in f[0].vectors
@@ -400,6 +405,8 @@ def flexible(mappings, buses):
                     buses[("DE", "co2")]: 1
                     * f[1].get("emission factor", 0)
                     / f[1]["output ratio"],
+                    renewables: renewables.share
+                    - (0 if "geothermal" not in f[0].technology else 1),
                     **(
                         {buses[("DE", "waste")]: 1 / f[1]["output ratio"]}
                         if "waste" in f[0].vectors
@@ -474,9 +481,19 @@ def build(mappings, year):
         for r in m.region
     ]
 
+    renewables = ("DE", "renewable share")
+    buses[renewables] = buses.get(renewables, Bus(label=renewables))
+    renewables = buses[renewables]
+    found = find(mappings, "renewable share")
+    renewables.share = found[0][1]["renewable share"] if found else 0
+
     es.add(
         *buses.values(),
         *sinks,
+        Source(
+            label=("DE", "renewable share compensation"),
+            outputs={renewables: Flow()},
+        ),
     )
 
     waste = find(mappings, ("waste", "unknown"))
