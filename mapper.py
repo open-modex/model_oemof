@@ -358,7 +358,14 @@ def flexible(mappings, buses):
         )
         for l in find(mappings, "natural domestic limit")
     }
-    fueled = find(mappings, "emission factor", "installed capacity")
+    fueled = chain(
+        find(mappings, "emission factor", "installed capacity"),
+        find(
+            mappings,
+            "installed capacity",
+            technology=("geothermal", "unknown"),
+        ),
+    )
     co2c = find(mappings, vectors=("unknown", "co2"))[0][1]["emission costs"]
     sources = [
         Source(
@@ -369,7 +376,10 @@ def flexible(mappings, buses):
                     variable_costs=(
                         f[1]["variable costs"]
                         + (1 / f[1]["output ratio"])
-                        * (f[1]["emission factor"] * co2c + f[1]["fuel costs"])
+                        * (
+                            f[1].get("emission factor", 0) * co2c
+                            + f[1].get("fuel costs", 0)
+                        )
                     ),
                     **(
                         {
@@ -401,7 +411,7 @@ def flexible(mappings, buses):
                 },
                 conversion_factors={
                     buses[("DE", "co2")]: 1
-                    * f[1]["emission factor"]
+                    * f[1].get("emission factor", 0)
                     / f[1]["output ratio"],
                     **(
                         {buses[("DE", "waste")]: 1 / f[1]["output ratio"]}
