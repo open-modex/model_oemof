@@ -9,6 +9,7 @@ from pprint import pformat as pf
 from typing import Tuple
 import json
 import sys
+import textwrap
 
 from frictionless import Detector, Package, Resource
 from loguru import logger
@@ -110,7 +111,16 @@ def reducer(dictionary, value):
     )
     for key in keys:
         if key in dictionary:
-            assert value["parameter_name"] not in dictionary[key]
+            assert (value["parameter_name"] not in dictionary[key]) or (
+                dictionary[key][value["parameter_name"]]
+                == (value["value"] if "value" in value else value["series"])
+            ), textwrap.indent(
+                f'\n\nParameter\n\n  {value["parameter_name"]}\n'
+                f"\nalready present under\n\n  {key}\n"
+                f'\nOld value: {dictionary[key][value["parameter_name"]]}'
+                f'\nNew value: {value.get("value", "Series ommitted...")}',
+                "  ",
+            )
         else:
             dictionary[key] = {}
         dictionary[key][value["parameter_name"]] = (
