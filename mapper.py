@@ -307,23 +307,11 @@ def trades(mappings, buses):
 
 
 def fixed(mappings, buses):
-    pv = "photovoltaics"
-    keys = set()
-
-    def bus(mapping):
-        if mapping[0].technology[0] == pv:
-            key = (mapping[0].regions, pv)
-            keys.add(key)
-            buses[key] = buses.get(key, Bus(label=key))
-        else:
-            key = (mapping[0].regions[0], mapping[0].vectors[1])
-        return buses[key]
-
     sources = [
         Source(
             label=label(source, "electricity generation"),
             outputs={
-                bus(source): Flow(
+                transformer: Flow(
                     fix=source[1]["capacity factor"],
                     nominal_value=source[1]["installed capacity"],
                     variable_costs=source[1].get("variable costs", 0),
@@ -331,24 +319,23 @@ def fixed(mappings, buses):
             },
         )
         for source in find(mappings, "capacity factor")
+        for transformer in [
+            Transformer(
+                label=label(source, "splitter",),
+                outputs={
+                    buses[
+                        (source[0].regions[0], source[0].vectors[1])
+                    ]: Flow(),
+                    **(
+                        {buses[(source[0].regions, "photovoltaics")]: Flow()}
+                        if source[0].technology[0] == "photovoltaics"
+                        else {}
+                    ),
+                },
+            )
+        ]
     ]
-
-    transformers = [
-        Transformer(
-            label=Label(
-                # key[0] is the (one-)tuple of regions
-                key[0],
-                (pv, "unknown"),
-                ("electricity", "electricity"),
-                "collect-pv",
-            ),
-            inputs={buses[key]: Flow()},
-            # key[0][0] should be the unpacked region.
-            outputs={buses[(key[0][0], "electricity")]: Flow()},
-        )
-        for key in keys
-    ]
-    return sources + [buses[key] for key in keys] + transformers
+    return sources + [o for source in sources for o in source.outputs]
 
 
 def flexible(mappings, buses):
@@ -471,8 +458,26 @@ def build(mappings, year):
         if not vector == "unknown"
     )
     buses = {rv: Bus(label=rv) for rv in rvs}
+    buses.update(
+        {
+            (r, "photovoltaics"): Bus(label=(r, "photovoltaics"))
+            for m in mappings
+            for r in m.region
+        }
+    )
+    sinks = [
+        Sink(
+            label=(r, "pv expansion limit"),
+            inputs={buses[(r, "photovoltaics")]: Flow()},
+        )
+        for m in mappings
+        for r in m.region
+    ]
 
-    es.add(*buses.values())
+    es.add(
+        *buses.values(),
+        *sinks,
+    )
 
     waste = find(mappings, ("waste", "unknown"))
     assert len(waste) == 1
