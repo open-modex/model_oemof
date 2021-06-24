@@ -18,12 +18,14 @@ from oemof.solph import (
     EnergySystem as ES,
     Flow,
     GenericStorage as Storage,
+    Investment,
     Model,
     Sink,
     Source,
     Transformer,
     processing,
 )
+from oemof.tools.economics import annuity
 import pandas as pd
 
 
@@ -55,6 +57,64 @@ DE = [
 def slurp(path):
     with open(path) as f:
         return json.load(f)
+
+
+def invest(mapping):
+    if mapping[0].year == 2016 or (
+        "capital costs" not in mapping[1]
+        and "expansion limit" not in mapping[1]
+    ):
+        return {
+            "nominal_storage_capacity"
+            if mapping[0].technology[0] == "storage"
+            else "nominal_value": mapping[1].get("installed capacity", 0)
+            * mapping[1].get("E2P ratio", 1)
+        }
+    optionals = (
+        {"maximum": mapping[1]["expansion limit"]}
+        if "expansion limit" in mapping[1]
+        and mapping[1]["expansion limit"] != 999999.0
+        else {}
+    )
+    if "E2P ratio" in mapping[1]:
+        ratio = 1 / mapping[1]["E2P ratio"]
+        optionals["invest_relation_input_capacity"] = ratio
+        optionals["invest_relation_output_capacity"] = ratio
+    return {
+        "investment": Investment(
+            ep_costs=annuity(
+                mapping[1].get(
+                    "capital costs",
+                    # TODO: Retrieve he capital costs of 446.39 for
+                    #       transmission lines from the data instead of
+                    #       hardcoding it here.
+                    0 if len(mapping[0].regions) == 1 else 446.39,
+                )
+                * mapping[1].get("distance", 1)
+                / (
+                    # For some reason, all storage capital costs (CCs) are in
+                    # €/MW, except for for batteries, which are in €/MWh.
+                    # Therefore the CCs for every non-battery storage have to
+                    # be divided by the E2P ratio, which is in hours, in order
+                    # to account for the fact that our storage capacities are
+                    # in MWh.
+                    mapping[1].get("E2P ratio", 1)
+                    if mapping[0].technology[1] != "battery"
+                    else 1
+                ),
+                # TODO: Retrieve the lifetime of 40 years for transmissions
+                #       lines from the data instead of hardcoding it. Same with
+                #       the WACC of 0.07 in the line below.
+                mapping[1]["lifetime"] if len(mapping[0].regions) == 1 else 40,
+                0.07,
+            )
+            if "capital costs" in mapping[1] or len(mapping[0].regions) == 2
+            else 0,
+            existing=mapping[1].get("installed capacity", 0)
+            * mapping[1].get("E2P ratio", 1),
+            **optionals,
+        )
+    }
 
 
 @dataclass(eq=True, frozen=True)
@@ -220,9 +280,7 @@ def transmission(line, buses, ratios):
     flow_bus = Bus(label=label(line, "flow-bus"))
     flow = Sink(
         label=label(line, "energy flow"),
-        inputs={
-            flow_bus: Flow(min=0, nominal_value=line[1]["installed capacity"])
-        },
+        inputs={flow_bus: Flow(min=0, **invest(line))},
     )
 
     lines = [
@@ -267,12 +325,9 @@ def lines(mappings, buses):
     }
     return [
         node
-        for line in find(
-            mappings, "installed capacity", technology=("transmission", "hvac")
-        )
-        + find(
-            mappings, "installed capacity", technology=("transmission", "DC")
-        )
+        for line in find(mappings, technology=("transmission", "hvac"))
+        + find(mappings, technology=("transmission", "DC"))
+        if len(line[0].regions) == 2
         for node in transmission(line, buses, ratios)
     ]
 
@@ -313,7 +368,7 @@ def fixed(mappings, buses):
             outputs={
                 transformer: Flow(
                     fix=source[1]["capacity factor"],
-                    nominal_value=source[1]["installed capacity"],
+                    **invest(source),
                     variable_costs=source[1].get("variable costs", 0),
                 )
             },
@@ -349,12 +404,8 @@ def flexible(mappings, buses):
         for l in find(mappings, "natural domestic limit")
     }
     fueled = chain(
-        find(mappings, "emission factor", "installed capacity"),
-        find(
-            mappings,
-            "installed capacity",
-            technology=("geothermal", "unknown"),
-        ),
+        find(mappings, "emission factor"),
+        find(mappings, technology=("geothermal", "unknown"),),
     )
     co2c = find(mappings, vectors=("unknown", "co2"))[0][1]["emission costs"]
     sources = [
@@ -362,7 +413,7 @@ def flexible(mappings, buses):
             label=label(f, "electricity generation"),
             outputs={
                 source_bus: Flow(
-                    nominal_value=f[1]["installed capacity"],
+                    **invest(f),
                     variable_costs=(
                         f[1]["variable costs"]
                         + (1 / f[1]["output ratio"])
@@ -427,26 +478,35 @@ def storages(mappings, buses):
     return [
         Storage(
             label=label(storage, "storage"),
-            nominal_storage_capacity=(
-                storage[1]["installed capacity"] * storage[1]["E2P ratio"]
-            ),
+            **investment,
             initial_storage_level=0,
             inflow_conversion_factor=storage[1]["input ratio"],
             outflow_conversion_factor=storage[1]["output ratio"],
             inputs={
                 buses[(storage[0].regions[0], storage[0].vectors[0])]: Flow(
-                    nominal_value=storage[1]["installed capacity"],
-                    variable_costs=storage[1]["variable costs"],
+                    **nv, variable_costs=storage[1].get("variable costs", 0),
                 )
             },
             outputs={
                 buses[(storage[0].regions[0], storage[0].vectors[1])]: Flow(
-                    nominal_value=storage[1]["installed capacity"],
-                    variable_costs=0,
+                    **nv, variable_costs=0,
                 )
             },
         )
-        for storage in find(mappings, "installed capacity", "E2P ratio")
+        for storage in find(mappings, "E2P ratio")
+        for investment in [invest(storage)]
+        for nv in [
+            {"nominal_value": storage[1].get("installed capacity", 0)}
+            if "investment" not in investment
+            else {
+                # The investment is bounded by the storage capacity through the
+                # flow conversion factors, so we can keep ep_costs and maximum
+                # at the default valus of `0` and `inf` respectively.
+                "investment": Investment(
+                    existing=storage[1].get("installed capacity", 0)
+                )
+            }
+        ]
     ]
 
 
@@ -475,10 +535,22 @@ def build(mappings, year):
     sinks = [
         Sink(
             label=(r, "pv expansion limit"),
-            inputs={buses[(r, "photovoltaics")]: Flow()},
+            inputs={
+                buses[(r, "photovoltaics")]: Flow(
+                    **invest((key, mappings[key]))
+                )
+            },
         )
         for m in mappings
         for r in m.region
+        for key in [
+            Key(
+                (r,),
+                ("photovoltaics", "unknown"),
+                ("solar radiation", "electricity"),
+                year,
+            )
+        ]
     ]
 
     renewables = ("DE", "renewable share")
