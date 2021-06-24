@@ -386,6 +386,7 @@ def fixed(mappings, buses):
                     **(
                         {buses[(source[0].regions, "photovoltaics")]: Flow()}
                         if source[0].technology[0] == "photovoltaics"
+                        and (source[0].regions, "photovoltaics") in buses
                         else {}
                     ),
                 },
@@ -525,24 +526,35 @@ def build(mappings, year):
         if not vector == "unknown"
     )
     buses = {rv: Bus(label=rv) for rv in rvs}
+    pv_regions = {
+        r
+        for m in mappings
+        for r in m.region
+        if r in DE
+        if Key(
+            (r,),
+            ("photovoltaics", "unknown"),
+            ("solar radiation", "electricity"),
+            year,
+        )
+        in mappings
+    }
     buses.update(
         {
-            (r, "photovoltaics"): Bus(label=(r, "photovoltaics"))
-            for m in mappings
-            for r in m.region
+            ((r,), "photovoltaics"): Bus(label=(r, "photovoltaics"))
+            for r in pv_regions
         }
     )
     sinks = [
         Sink(
-            label=(r, "pv expansion limit"),
+            label=((r,), "pv expansion limit"),
             inputs={
-                buses[(r, "photovoltaics")]: Flow(
+                buses[((r,), "photovoltaics")]: Flow(
                     **invest((key, mappings[key]))
                 )
             },
         )
-        for m in mappings
-        for r in m.region
+        for r in pv_regions
         for key in [
             Key(
                 (r,),
