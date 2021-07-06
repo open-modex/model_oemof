@@ -875,7 +875,14 @@ def export(mappings, meta, results, year):
         {
             **cost_defaults,
             "parameter_name": "variable cost",
-            "value": objective,
+            "value": objective
+            - sum(
+                megawatthours * k[0].slack_costs
+                for k in results
+                if type(k[0]) is Source
+                if "slack" == k[0].label.name
+                for megawatthours in list(results[k]["sequences"].iloc[:, 0])
+            ),
         }
     ]
 
