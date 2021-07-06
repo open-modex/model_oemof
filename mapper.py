@@ -920,12 +920,9 @@ def export(mappings, meta, results, year):
             "value": sum(
                 sum(row["series"])
                 * (
-                    1
-                    - m[
-                        "input ratio"
-                        if row["parameter_name"] == "input energy"
-                        else "output ratio"
-                    ]
+                    (1 - m["input ratio"])
+                    if row["parameter_name"] == "input energy"
+                    else (1 / m["output ratio"] - 1)
                 )
                 for row in group
                 for m in [mappings[Key.from_dictionary(row)]]
