@@ -922,12 +922,9 @@ def export(mappings, meta, results, year):
                 * (
                     1
                     - m[
-                        (
-                            "in"
-                            if row["parameter_name"] == "input energy"
-                            else "out"
-                        )
-                        + "put ratio"
+                        "input ratio"
+                        if row["parameter_name"] == "input energy"
+                        else "output ratio"
                     ]
                 )
                 for row in group
