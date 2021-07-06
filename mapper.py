@@ -628,9 +628,10 @@ def build(mappings, year):
             if rv[1] == "electricity"
         ]
     )
-    maxvc = (
-        max(vc[1]["variable costs"] for vc in find(mappings, "variable costs"))
-        + 0.01
+
+    Source.slack_costs = sum(
+        max(p[1][f"{c} costs"] for p in find(mappings, f"{c} costs"))
+        for c in ["variable", "fixed", "capital"]
     )
     es.add(
         *[
@@ -641,7 +642,7 @@ def build(mappings, year):
                     vectors=(rv[1], rv[1]),
                     name="slack",
                 ),
-                outputs={buses[rv]: Flow(variable_costs=maxvc)},
+                outputs={buses[rv]: Flow(variable_costs=Source.slack_costs)},
             )
             for rv in buses
             if rv[1] == "electricity"
