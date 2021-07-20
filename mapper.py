@@ -33,7 +33,6 @@ csv_field_size_limit(sys.maxsize)
 
 logger.disable(__name__)
 
-mappings = ["concrete"]  # , "normalized"]
 DE = [
     "BB",
     "BE",
@@ -190,11 +189,9 @@ def reducer(dictionary, value):
     return dictionary
 
 
-def from_json():
-    base = {
-        mapping: slurp(f"base-scenario.{mapping}.json") for mapping in mappings
-    }
-    for mapping in mappings:
+def from_json(path="base-scenario.concrete.json"):
+    base = {"concrete": slurp(path)}
+    for mapping in base:
         logger.info(
             f"\n{mapping} top-level keys/lengths:"
             f"\n{pf([(k, len(base[mapping][k])) for k in base[mapping]])}"
@@ -209,7 +206,7 @@ def from_json():
         )
         for mapping in base
     }
-    for mapping in mappings:
+    for mapping in base:
         logger.info(f"\n{mapping} time series boundaries:" f"\n{pf(tsbs)}")
     reduced = reduce(
         reducer,
@@ -223,7 +220,7 @@ def from_json():
             "base": base[mapping],
             "timeseries boundaries": tsbs[mapping],
         }
-        for mapping in mappings
+        for mapping in base
     }
     result["concrete"]["objects"] = reduced
     years = [2016, 2030, 2050]
