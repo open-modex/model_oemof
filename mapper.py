@@ -901,6 +901,7 @@ def export(mappings, meta, results, year):
             **cost_defaults,
             "parameter_name": "system cost",
             "value": sum(cost["value"] for cost in costs),
+            "unit": "€",
         }
     )
 
