@@ -697,6 +697,12 @@ def export(mappings, meta, results, year):
     path = Path("results")
     path.mkdir(exist_ok=True)
 
+    store = pd.HDFStore(f"oemof{year}.results.df.h5", "w")
+    df = rs2df(results)
+    store["results"] = df.set_axis(
+        df.columns.map(lambda xs: tuple(f"{x}" for x in xs)), axis="columns"
+    )
+
     header = [
         "id",
         "scenario_id",
