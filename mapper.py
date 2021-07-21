@@ -1065,7 +1065,8 @@ def export(mappings, meta, results, year):
     show_default=True,
     help="Print solver output.",
 )
-def main(path, tee, verbosity, year):
+@click.option("--timesteps", default=None, type=int)
+def main(path, tee, timesteps, verbosity, year):
     """Read <scenario file>, build the corresponding model and solve it.
 
     The <scenario file> should be a JSON file containing all input data.
