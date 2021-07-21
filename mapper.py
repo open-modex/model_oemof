@@ -363,7 +363,7 @@ def fixed(mappings, buses):
         Source(
             label=label(source, "electricity generation"),
             outputs={
-                transformer: Flow(
+                auxiliary_bus: Flow(
                     fix=source[1]["capacity factor"],
                     **invest(source),
                     variable_costs=source[1].get("variable costs", 0),
@@ -372,9 +372,11 @@ def fixed(mappings, buses):
         )
         for source in find(mappings, "capacity factor")
         for renewables in [buses[("DE", "renewable share")]]
+        for auxiliary_bus in [Bus(label=label(source, "auxiliary-bus"))]
         for transformer in [
             Transformer(
                 label=label(source, "splitter",),
+                inputs={auxiliary_bus: Flow()},
                 outputs={
                     buses[
                         (source[0].regions[0], source[0].vectors[1])
@@ -387,11 +389,14 @@ def fixed(mappings, buses):
                         else {}
                     ),
                 },
-                conversion_factors={renewables: renewables.share - 1},
             )
         ]
     ]
-    return sources + [o for source in sources for o in source.outputs]
+    return (
+        sources
+        + [o for source in sources for o in source.outputs]
+        + [t for source in sources for o in source.outputs for t in o.outputs]
+    )
 
 
 def flexible(mappings, buses):
@@ -445,7 +450,11 @@ def flexible(mappings, buses):
                 outputs={
                     buses[(f[0].regions[0], f[0].vectors[1])]: Flow(),
                     buses[("DE", "co2")]: Flow(),
-                    renewables: Flow(),
+                    **(
+                        {renewables: Flow()}
+                        if "geothermal" in f[0].technology
+                        else {}
+                    ),
                     **(
                         {buses[("DE", "waste")]: Flow()}
                         if "waste" in f[0].vectors
@@ -461,8 +470,6 @@ def flexible(mappings, buses):
                     buses[("DE", "co2")]: 1
                     * f[1].get("emission factor", 0)
                     / f[1]["output ratio"],
-                    renewables: renewables.share
-                    - (0 if "geothermal" not in f[0].technology else 1),
                     **(
                         {buses[("DE", "waste")]: 1 / f[1]["output ratio"]}
                         if "waste" in f[0].vectors
@@ -569,6 +576,21 @@ def build(mappings, year):
         ]
     ]
 
+    # This would be the correct way of computing the total_demand. Correct,
+    # because it's always in sync with how the demand sinks are computed.
+    #
+    # demand_sinks = demands(mappings, buses)
+    # total_demand = sum(
+    #     v for sink in demand_sinks for v in list(sink.inputs.values[0].fix)
+    # )
+
+    # But this way should also work, although it's a bit fragile, because one
+    # could change the way the demand_sinks are generated without updating
+    # this. It avoids having to change the `es.add(*demands(mappings, buses))`
+    # line though.
+    total_demand = sum(
+        v for demand in find(mappings, "demand") for v in demand[1]["demand"]
+    )
     renewables = ("DE", "renewable share")
     buses[renewables] = buses.get(renewables, Bus(label=renewables))
     renewables = buses[renewables]
@@ -578,9 +600,13 @@ def build(mappings, year):
     es.add(
         *buses.values(),
         *sinks,
-        Source(
-            label=("DE", "renewable share compensation"),
-            outputs={renewables: Flow()},
+        Sink(
+            label=("DE", "renewable share collection"),
+            inputs={
+                renewables: Flow(
+                    nominal_value=total_demand, summed_min=renewables.share
+                )
+            },
         ),
     )
 
