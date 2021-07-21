@@ -847,6 +847,57 @@ def export(mappings, meta, results, year):
         )
     ]
 
+    investments = [
+        {
+            "region": list(label.regions),
+            "input_energy_vector": label.vectors[0],
+            "output_energy_vector": label.vectors[1],
+            "technology": label.technology[0],
+            "technology_type": label.technology[1],
+            "parameter_name": "added capacity",
+            "value": results[key]["scalars"]["invest"].sum() / 1000,
+            "unit": "GWh/a" if type(key[0]) is Storage else "GW/a",
+        }
+        for key in results
+        if (type(key[1]) is not Storage)
+        and (
+            (type(key[0]) is not Storage)
+            or ((type(key[0]) is Storage) and (key[1] is None))
+        )
+        if "invest" in results[key]["scalars"]
+        if (
+            key[1] is not None
+            and tuple(key[1].label)[-1] != "pv expansion limit"
+        )
+        for label in [key[0].label]
+    ]
+
+    total_capacity = [
+        {
+            "region": list(label.regions),
+            "input_energy_vector": label.vectors[0],
+            "output_energy_vector": label.vectors[1],
+            "technology": label.technology[0],
+            "technology_type": label.technology[1],
+            "parameter_name": "capacity",
+            "value": value / 1000,
+            "unit": "GWh/a" if type(key[0]) is Storage else "GW/a",
+        }
+        for key in results
+        for label in [key[0].label]
+        if type(label) is Label
+        and label.name in ["flow_bus", "electricity generation", "storage"]
+        and (type(key[0]) is not Storage or key[1] is None)
+        for flow in [key[0].outputs[key[1]] if key[1] is not None else key[0]]
+        for value in [
+            flow.investment.existing + results[key]["scalars"].invest
+            if "invest" in results[key]["scalars"]
+            else flow.nominal_storage_capacity
+            if type(key[0]) is Storage
+            else flow.nominal_value
+        ]
+    ]
+
     regions = sorted({region for row in series for region in row["region"]})
 
     emissions.append(
@@ -975,7 +1026,15 @@ def export(mappings, meta, results, year):
                 **defaults,
             }
             for i, s in enumerate(
-                chain(sums, storage_losses, emissions, costs, [renewables])
+                chain(
+                    sums,
+                    storage_losses,
+                    emissions,
+                    costs,
+                    [renewables],
+                    investments,
+                    total_capacity,
+                )
             )
         )
 
