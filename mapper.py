@@ -32,8 +32,6 @@ import pandas as pd
 
 csv_field_size_limit(sys.maxsize)
 
-logger.disable(__name__)
-
 DE = [
     "BB",
     "BE",
@@ -1040,13 +1038,35 @@ def export(mappings, meta, results, year):
     metavar="<scenario file>",
     type=click.Path(exists=True, dir_okay=False),
 )
-def main(path, silent=True):
+@click.option(
+    "--verbosity",
+    default="WARNING",
+    show_default=True,
+    type=click.Choice(
+        [
+            "TRACE",
+            "DEBUG",
+            "INFO",
+            "SUCCESS",
+            "WARNING",
+            "ERROR",
+            "CRITICAL",
+            "SILENT",
+        ],
+        case_sensitive=False,
+    ),
+)
+def main(path, verbosity):
     """Read <scenario file>, build the corresponding model and solve it.
 
     The <scenario file> should be a JSON file containing all input data.
     """
-    if not silent:
-        logger.enable(__name__)
+    if verbosity == "SILENT":
+        logger.disable(__name__)
+    else:
+        logger.remove()
+        logger.add(sys.stderr, level=verbosity)
+
     year = 2016
     mappings = from_json(path)[year]
     es = build(mappings, year)
