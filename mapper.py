@@ -1,6 +1,6 @@
 from collections import namedtuple
 from csv import DictWriter, field_size_limit as csv_field_size_limit
-from dataclasses import asdict, dataclass, fields, replace
+from dataclasses import asdict, astuple, dataclass, fields, replace
 from datetime import datetime
 from functools import reduce
 from itertools import chain, groupby
@@ -8,6 +8,7 @@ from pathlib import Path
 from pprint import pformat as pf
 from typing import Tuple
 import json
+import re
 import sys
 import textwrap
 
@@ -26,12 +27,12 @@ from oemof.solph import (
     processing,
 )
 from oemof.tools.economics import annuity
+import click
 import pandas as pd
+import plotly.graph_objects as plt
 
 
 csv_field_size_limit(sys.maxsize)
-
-logger.disable(__name__)
 
 DE = [
     "BB",
@@ -56,6 +57,162 @@ DE = [
 def slurp(path):
     with open(path) as f:
         return json.load(f)
+
+
+def rs2df(rs):
+    """Convert time dependent optimization results to a dataframe.
+
+    The resulting dataframe has rows indexed by the timeindex and columns
+    which are a two level MultiIndex, where the label of the source node is
+    the first level and the label of the target node is the second level.
+    """
+
+    def label(o):
+        return getattr(o, "label", str(o))
+
+    d = {
+        (label(k[0]), label(k[1]), name): rs[k]["sequences"][name]
+        for k in rs
+        for name in rs[k]["sequences"]
+    }
+    return (
+        pd.DataFrame.from_dict(d)
+        .sort_index(axis="columns")
+        .rename_axis(columns=["source", "target", "values"])
+    )
+
+
+def sankey(df):
+    idx = pd.IndexSlice
+    sums = df.sum()
+    if len(sums.index.levshape) > 2:
+        sums = sums.droplevel(list(range(2, len(sums.index.levshape))))
+    sums = sums.drop("None", level=1)
+
+    deletable = [
+        k
+        for k in sums.index
+        if len(sums.loc[idx[k[0], :]]) == 1
+        if len(sums.get(idx[:, k[0]], [])) == 1
+        if list(sums.loc[idx[k[0], :]]) == list(sums.loc[idx[:, k[0]]])
+    ]
+    for key in deletable:
+        sums = sums.set_axis(
+            sums.index.map(lambda k: (k[0], key[1]) if k[1] == key[0] else k)
+        )
+        sums = sums.drop(key)
+
+    compressable = [
+        k
+        for k in sums.index
+        if len(sums.loc[(k[0],)]) == 1
+        if len(sums.loc[idx[:, k[1]]]) == 1
+    ]
+    for key in compressable:
+        if sums.get(idx[:, key[0]]) is None:
+            # keep = 0
+            def keep(k):
+                if key[1] == k[0]:
+                    return (key[0], k[1])
+                return k
+
+        elif sums.get(idx[key[1], :]) is None:
+            # keep = 1
+            def keep(k):
+                if k[1] == key[0]:
+                    return (k[0], key[1])
+                return k
+
+        else:
+            raise ValueError(
+                "Can't decide whether to keep source or target of {key}."
+            )
+        sums = sums.drop(key)
+        sums = sums.set_axis(sums.index.map(keep))
+
+    # Transform 'energy flow, XY -> AB: transmission, hvac / electricity,
+    # electricity' nodes into flows from "('XY', 'electricity')" to "('AB',
+    # 'electricity')" with a label of "transmission, hvac".
+    # Remember to redirect the losses and "energy flow (both directions)"
+    # flows, though.
+    sums = sums.drop([k for k in sums.index if "(both directions)" in k[1]])
+    for key in [k for k in sums.index if "energy flow" in k[1]]:
+        sums = sums.drop(key)
+        sums = sums.set_axis(
+            sums.index.map(lambda k: (key[0], k[1]) if k[0] == key[1] else k)
+        )
+
+    def parse(label):
+        if ": " in label:
+            detail, regions, t1, t2, v1, v2 = re.split(", | / |: ", label)
+            key = Key(
+                region=tuple(regions.split(" -> ")),
+                technology=(t1, t2),
+                vectors=(v1, v2),
+                year=-1,
+            )
+            key["detail"] = detail
+        else:  # should be "(region, vector)" or "((region,), vector)"
+            region, detail = re.match(
+                "\(([^()]*|\([^()]*,\)), '([^()]*)'\)", label
+            ).groups()
+            region = re.sub("[()',']", "", region)
+            key = Key(
+                region=(re.sub("[()',']", "", region),),
+                technology=None,
+                vectors=None,
+                year=-1,
+            )
+            key["detail"] = detail
+        return key
+
+    def label(key):
+        if ": " in key:
+            match = re.search("^([^,]*), ", key)
+            return (match[1], key.replace(match[0], ""))
+        # if re.search("'([^']* expansion limit)'")
+        return (key, None)
+
+    labels = list(set(parse(l)["detail"] for p in sums.index for l in p))
+    l2i = {l: i for i, l in enumerate(labels)}
+    color = "rgba(44, 160, 44, {})"
+    figure = plt.Figure(
+        data=[
+            plt.Sankey(
+                node=dict(
+                    pad=15,
+                    thickness=15,
+                    line=dict(color="black", width=0.5),
+                    label=labels,
+                    color=color.format(0.8),
+                ),
+                link=dict(
+                    source=[l2i[parse(k[0])["detail"]] for k in sums.index],
+                    target=[l2i[parse(k[1])["detail"]] for k in sums.index],
+                    value=list(sums),
+                    label=[
+                        (l0 + " | " + l1)
+                        if l0 != "None"
+                        and l1 != "None"
+                        and l0 != l1
+                        and "DE:" not in l0
+                        and "DE:" not in l1
+                        else l0
+                        if l0 != "None"
+                        else l1
+                        if l1 != "None"
+                        else None
+                        for k in sums.index
+                        for l0 in [str(label(k[0])[1])]
+                        for l1 in [str(label(k[1])[1])]
+                    ],
+                    color=color.format(0.4),
+                ),
+            )
+        ]
+    )
+    figure.update_layout(title_text="Energy System Flows", font_size=10)
+    return figure
 
 
 def invest(mapping):
@@ -185,11 +342,11 @@ def reducer(dictionary, value):
         dictionary[key][value["parameter_name"]] = (
             value["value"] if "value" in value else value["series"]
         )
-    logger.info(value)
     return dictionary
 
 
-def from_json(path="base-scenario.concrete.json"):
+def from_json(path):
+    logger.info("Reading mappings.")
     base = {"concrete": slurp(path)}
     for mapping in base:
         logger.info(
@@ -250,7 +407,21 @@ def vectors(mappings):
     return set([m.vectors for m in mappings])
 
 
-Label = namedtuple("Label", ["regions", "technology", "vectors", "name"])
+@dataclass(eq=True, frozen=True)
+class Label:
+    regions: Tuple[str]
+    technology: Tuple[str, str]
+    vectors: Tuple[str, str]
+    name: str
+
+    def __str__(self):
+        return (
+            f"{self.name}, {' -> '.join(self.regions)}:"
+            f" {', '.join(self.technology)} / {', '.join(self.vectors)}"
+        )
+
+    def __iter__(self):
+        return astuple(self).__iter__()
 
 
 def label(mapping, name):
@@ -284,7 +455,7 @@ def transmission(line, buses, ratios):
 
     lines = [
         Transformer(
-            label=label(line, "energy flow")._replace(regions=regions),
+            label=replace(label(line, "energy flow"), regions=regions,),
             inputs={source: Flow()},
             outputs={flow_bus: Flow(), loss_bus: Flow(), target: Flow()},
             conversion_factors={
@@ -525,6 +696,7 @@ def storages(mappings, buses):
 
 
 def build(mappings, year):
+    logger.info("Building the energy system.")
     es = ES(
         timeindex=pd.date_range(
             f"{year}-01-01T00:00:00", f"{year}-12-31T23:00:00", freq="1h"
@@ -681,8 +853,15 @@ def build(mappings, year):
 
 
 def export(mappings, meta, results, year):
+    logger.info("Exporting the results.")
     path = Path("results")
     path.mkdir(exist_ok=True)
+
+    store = pd.HDFStore(f"oemof{year}.results.df.h5", "w")
+    df = rs2df(results)
+    store["results"] = df.set_axis(
+        df.columns.map(lambda xs: tuple(f"{x}" for x in xs)), axis="columns"
+    )
 
     header = [
         "id",
@@ -1136,17 +1315,64 @@ def export(mappings, meta, results, year):
     return None
 
 
-def main(silent=True):
-    if not silent:
-        logger.enable(__name__)
-    year = 2016
-    mappings = from_json()[year]
+@click.command()
+@click.argument(
+    "path",
+    metavar="<scenario file>",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.option("--year", required=True, show_default=True)
+@click.option(
+    "--verbosity",
+    default="WARNING",
+    show_default=True,
+    type=click.Choice(
+        [
+            "TRACE",
+            "DEBUG",
+            "INFO",
+            "SUCCESS",
+            "WARNING",
+            "ERROR",
+            "CRITICAL",
+            "SILENT",
+        ],
+        case_sensitive=False,
+    ),
+)
+@click.option(
+    "--tee/--no-tee",
+    default=False,
+    show_default=True,
+    help="Print solver output.",
+)
+@click.option("--timesteps", default=None, type=int)
+def main(path, tee, timesteps, verbosity, year):
+    """Read <scenario file>, build the corresponding model and solve it.
+
+    The <scenario file> should be a JSON file containing all input data.
+    """
+    if verbosity == "SILENT":
+        logger.disable(__name__)
+    else:
+        logger.remove()
+        logger.add(sys.stderr, level=verbosity)
+
+    mappings = from_json(path)[year]
     es = build(mappings, year)
+
+    logger.info("Building the model.")
     om = Model(es)
-    om.solve(solver="cbc")  # , solve_kwargs={'tee': True})
+
+    logger.info("Starting the solver.")
+    om.solve(solver="gurobi", solve_kwargs={"tee": tee})
+    om.solve(solver="cbc", solve_kwargs={"tee": tee})
+
+    logger.info("Processing the results.")
     results = processing.results(om)
     meta = processing.meta_results(om)
-    export(mappings, meta, results, 2016)
+
+    export(mappings, meta, results, year)
     return (es, om)
 
 
