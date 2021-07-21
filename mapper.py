@@ -1059,7 +1059,13 @@ def export(mappings, meta, results, year):
         case_sensitive=False,
     ),
 )
-def main(path, verbosity, year):
+@click.option(
+    "--tee/--no-tee",
+    default=False,
+    show_default=True,
+    help="Print solver output.",
+)
+def main(path, tee, verbosity, year):
     """Read <scenario file>, build the corresponding model and solve it.
 
     The <scenario file> should be a JSON file containing all input data.
@@ -1077,7 +1083,7 @@ def main(path, verbosity, year):
     om = Model(es)
 
     logger.info("Starting the solver.")
-    om.solve(solver="cbc")  # , solve_kwargs={'tee': True})
+    om.solve(solver="cbc", solve_kwargs={"tee": tee})
 
     logger.info("Processing the results.")
     results = processing.results(om)
