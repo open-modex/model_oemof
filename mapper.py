@@ -8,6 +8,7 @@ from pathlib import Path
 from pprint import pformat as pf
 from typing import Tuple
 import json
+import re
 import sys
 import textwrap
 
@@ -27,6 +28,7 @@ from oemof.solph import (
 )
 from oemof.tools.economics import annuity
 import pandas as pd
+import plotly.graph_objects as plt
 
 
 csv_field_size_limit(sys.maxsize)
@@ -79,6 +81,139 @@ def rs2df(rs):
         .sort_index(axis="columns")
         .rename_axis(columns=["source", "target", "values"])
     )
+
+
+def sankey(df):
+    idx = pd.IndexSlice
+    sums = df.sum()
+    if len(sums.index.levshape) > 2:
+        sums = sums.droplevel(list(range(2, len(sums.index.levshape))))
+    sums = sums.drop("None", level=1)
+
+    deletable = [
+        k
+        for k in sums.index
+        if len(sums.loc[idx[k[0], :]]) == 1
+        if len(sums.get(idx[:, k[0]], [])) == 1
+        if list(sums.loc[idx[k[0], :]]) == list(sums.loc[idx[:, k[0]]])
+    ]
+    for key in deletable:
+        sums = sums.set_axis(
+            sums.index.map(lambda k: (k[0], key[1]) if k[1] == key[0] else k)
+        )
+        sums = sums.drop(key)
+
+    compressable = [
+        k
+        for k in sums.index
+        if len(sums.loc[(k[0],)]) == 1
+        if len(sums.loc[idx[:, k[1]]]) == 1
+    ]
+    for key in compressable:
+        if sums.get(idx[:, key[0]]) is None:
+            # keep = 0
+            def keep(k):
+                if key[1] == k[0]:
+                    return (key[0], k[1])
+                return k
+
+        elif sums.get(idx[key[1], :]) is None:
+            # keep = 1
+            def keep(k):
+                if k[1] == key[0]:
+                    return (k[0], key[1])
+                return k
+
+        else:
+            raise ValueError(
+                "Can't decide whether to keep source or target of {key}."
+            )
+        sums = sums.drop(key)
+        sums = sums.set_axis(sums.index.map(keep))
+
+    # Transform 'energy flow, XY -> AB: transmission, hvac / electricity,
+    # electricity' nodes into flows from "('XY', 'electricity')" to "('AB',
+    # 'electricity')" with a label of "transmission, hvac".
+    # Remember to redirect the losses and "energy flow (both directions)"
+    # flows, though.
+    sums = sums.drop([k for k in sums.index if "(both directions)" in k[1]])
+    for key in [k for k in sums.index if "energy flow" in k[1]]:
+        sums = sums.drop(key)
+        sums = sums.set_axis(
+            sums.index.map(lambda k: (key[0], k[1]) if k[0] == key[1] else k)
+        )
+
+    def parse(label):
+        if ": " in label:
+            detail, regions, t1, t2, v1, v2 = re.split(", | / |: ", label)
+            key = Key(
+                region=tuple(regions.split(" -> ")),
+                technology=(t1, t2),
+                vectors=(v1, v2),
+                year=-1,
+            )
+            key["detail"] = detail
+        else:  # should be "(region, vector)" or "((region,), vector)"
+            region, detail = re.match(
+                "\(([^()]*|\([^()]*,\)), '([^()]*)'\)", label
+            ).groups()
+            region = re.sub("[()',']", "", region)
+            key = Key(
+                region=(re.sub("[()',']", "", region),),
+                technology=None,
+                vectors=None,
+                year=-1,
+            )
+            key["detail"] = detail
+        return key
+
+    def label(key):
+        if ": " in key:
+            match = re.search("^([^,]*), ", key)
+            return (match[1], key.replace(match[0], ""))
+        # if re.search("'([^']* expansion limit)'")
+        return (key, None)
+
+    labels = list(set(parse(l)["detail"] for p in sums.index for l in p))
+    l2i = {l: i for i, l in enumerate(labels)}
+    color = "rgba(44, 160, 44, {})"
+    figure = plt.Figure(
+        data=[
+            plt.Sankey(
+                node=dict(
+                    pad=15,
+                    thickness=15,
+                    line=dict(color="black", width=0.5),
+                    label=labels,
+                    color=color.format(0.8),
+                ),
+                link=dict(
+                    source=[l2i[parse(k[0])["detail"]] for k in sums.index],
+                    target=[l2i[parse(k[1])["detail"]] for k in sums.index],
+                    value=list(sums),
+                    label=[
+                        (l0 + " | " + l1)
+                        if l0 != "None"
+                        and l1 != "None"
+                        and l0 != l1
+                        and "DE:" not in l0
+                        and "DE:" not in l1
+                        else l0
+                        if l0 != "None"
+                        else l1
+                        if l1 != "None"
+                        else None
+                        for k in sums.index
+                        for l0 in [str(label(k[0])[1])]
+                        for l1 in [str(label(k[1])[1])]
+                    ],
+                    color=color.format(0.4),
+                ),
+            )
+        ]
+    )
+    figure.update_layout(title_text="Energy System Flows", font_size=10)
+    return figure
 
 
 def invest(mapping):
