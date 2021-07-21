@@ -26,6 +26,7 @@ from oemof.solph import (
     processing,
 )
 from oemof.tools.economics import annuity
+import click
 import pandas as pd
 
 
@@ -189,7 +190,7 @@ def reducer(dictionary, value):
     return dictionary
 
 
-def from_json(path="base-scenario.concrete.json"):
+def from_json(path):
     base = {"concrete": slurp(path)}
     for mapping in base:
         logger.info(
@@ -1033,11 +1034,21 @@ def export(mappings, meta, results, year):
     return None
 
 
-def main(silent=True):
+@click.command()
+@click.argument(
+    "path",
+    metavar="<scenario file>",
+    type=click.Path(exists=True, dir_okay=False),
+)
+def main(path, silent=True):
+    """Read <scenario file>, build the corresponding model and solve it.
+
+    The <scenario file> should be a JSON file containing all input data.
+    """
     if not silent:
         logger.enable(__name__)
     year = 2016
-    mappings = from_json()[year]
+    mappings = from_json(path)[year]
     es = build(mappings, year)
     om = Model(es)
     om.solve(solver="cbc")  # , solve_kwargs={'tee': True})
