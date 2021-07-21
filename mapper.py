@@ -544,7 +544,7 @@ def fixed(mappings, buses):
             },
         )
         for source in find(mappings, "capacity factor")
-        for renewables in [buses[("DE", "renewable share")]]
+        for renewables in [buses[("DE", "renewables")]]
         for auxiliary_bus in [Bus(label=label(source, "auxiliary-bus"))]
         for transformer in [
             Transformer(
@@ -615,7 +615,7 @@ def flexible(mappings, buses):
         )
         for f in fueled
         for source_bus in [Bus(label=label(f, "auxiliary-bus"))]
-        for renewables in [buses[("DE", "renewable share")]]
+        for renewables in [buses[("DE", "renewables")]]
         for transformer in [
             Transformer(
                 label=label(f, "auxiliary-transformer"),
@@ -754,7 +754,7 @@ def build(mappings, year):
     total_demand = sum(
         v for sink in demand_sinks for v in list(sink.inputs.values[0].fix)
     )
-    renewables = ("DE", "renewable share")
+    renewables = ("DE", "renewables")
     buses[renewables] = buses.get(renewables, Bus(label=renewables))
     renewables = buses[renewables]
     found = find(mappings, "renewable share")
@@ -764,7 +764,7 @@ def build(mappings, year):
         *buses.values(),
         *sinks,
         Sink(
-            label=("DE", "renewable share collection"),
+            label=("DE", "renewable share"),
             inputs={
                 renewables: Flow(
                     nominal_value=total_demand, summed_min=renewables.share
