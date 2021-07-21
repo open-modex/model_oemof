@@ -272,17 +272,17 @@ def demands(mappings, buses):
 
 
 def transmission(line, buses, ratios):
-    loss_bus = Bus(label=label(line, "loss-bus"))
-    loss = Sink(label=label(line, "losses"), inputs={loss_bus: Flow()})
+    loss_bus = Bus(label=label(line, "losses"))
+    loss = Sink(label=label(line, "loss-sink"), inputs={loss_bus: Flow()})
     flow_bus = Bus(label=label(line, "flow-bus"))
     flow = Sink(
-        label=label(line, "energy flow"),
+        label=label(line, "energy flow (both directions)"),
         inputs={flow_bus: Flow(min=0, **invest(line))},
     )
 
     lines = [
         Transformer(
-            label=label(line, "line")._replace(regions=regions),
+            label=label(line, "energy flow")._replace(regions=regions),
             inputs={source: Flow()},
             outputs={flow_bus: Flow(), loss_bus: Flow(), target: Flow()},
             conversion_factors={
