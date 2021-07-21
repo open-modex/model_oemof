@@ -58,6 +58,29 @@ def slurp(path):
         return json.load(f)
 
 
+def rs2df(rs):
+    """Convert time dependent optimization results to a dataframe.
+
+    The resulting dataframe has rows indexed by the timeindex and columns
+    which are a two level MultiIndex, where the label of the source node is
+    the first level and the label of the target node is the second level.
+    """
+
+    def label(o):
+        return getattr(o, "label", str(o))
+
+    d = {
+        (label(k[0]), label(k[1]), name): rs[k]["sequences"][name]
+        for k in rs
+        for name in rs[k]["sequences"]
+    }
+    return (
+        pd.DataFrame.from_dict(d)
+        .sort_index(axis="columns")
+        .rename_axis(columns=["source", "target", "values"])
+    )
+
+
 def invest(mapping):
     if mapping[0].year == 2016 or (
         "capital costs" not in mapping[1]
