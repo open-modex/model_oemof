@@ -950,6 +950,25 @@ def export(mappings, meta, results, year):
     costs.append(
         {
             **cost_defaults,
+            "parameter_name": "investment cost",
+            "value": sum(
+                (
+                    key[0].outputs[key[1]] if key[1] is not None else key[0]
+                ).investment.ep_costs
+                * results[key]["scalars"]["invest"].sum()
+                for key in results
+                if "invest" in results[key]["scalars"]
+                if (
+                    key[1] is not None
+                    and tuple(key[1].label)[-1] != "pv expansion limit"
+                )
+            ),
+        }
+    )
+
+    costs.append(
+        {
+            **cost_defaults,
             "parameter_name": "system cost",
             "value": sum(cost["value"] for cost in costs),
             "unit": "€",
