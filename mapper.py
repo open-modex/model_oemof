@@ -184,7 +184,6 @@ def reducer(dictionary, value):
         dictionary[key][value["parameter_name"]] = (
             value["value"] if "value" in value else value["series"]
         )
-    logger.info(value)
     return dictionary
 
 
