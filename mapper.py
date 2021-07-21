@@ -1040,6 +1040,7 @@ def export(mappings, meta, results, year):
     metavar="<scenario file>",
     type=click.Path(exists=True, dir_okay=False),
 )
+@click.option("--year", required=True, show_default=True)
 @click.option(
     "--verbosity",
     default="WARNING",
@@ -1058,7 +1059,7 @@ def export(mappings, meta, results, year):
         case_sensitive=False,
     ),
 )
-def main(path, verbosity):
+def main(path, verbosity, year):
     """Read <scenario file>, build the corresponding model and solve it.
 
     The <scenario file> should be a JSON file containing all input data.
@@ -1069,7 +1070,6 @@ def main(path, verbosity):
         logger.remove()
         logger.add(sys.stderr, level=verbosity)
 
-    year = 2016
     mappings = from_json(path)[year]
     es = build(mappings, year)
 
