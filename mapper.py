@@ -223,7 +223,9 @@ def from_json(path="base-scenario.concrete.json"):
         for mapping in base
     }
     result["concrete"]["objects"] = reduced
-    years = [2016, 2030, 2050]
+    years = sorted(
+        pd.to_datetime(ts).year for tsb in tsbs["concrete"] for ts in tsb
+    )
     result.update(
         {
             year: {k: reduced[k] for k in reduced if k.year == year}
