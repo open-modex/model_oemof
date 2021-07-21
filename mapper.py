@@ -1073,7 +1073,7 @@ def main(path, verbosity):
     om.solve(solver="cbc")  # , solve_kwargs={'tee': True})
     results = processing.results(om)
     meta = processing.meta_results(om)
-    export(mappings, meta, results, 2016)
+    export(mappings, meta, results, year)
     return (es, om)
 
 
