@@ -395,11 +395,23 @@ def fixed(mappings, buses):
 
 
 def flexible(mappings, buses):
-    limits = {
-        (l[0].regions, l[0].vectors[0]): (
-            l[1]["natural domestic limit"] * (pow(10, 9) / 3600)
+    limits = find(mappings, "natural domestic limit")
+    limit_buses = {
+        (l[0].regions, l[0].vectors[0]): Bus(label=label(l, "limit bus"))
+        for l in limits
+    }
+    limit_sinks = {
+        (l[0].regions, l[0].vectors[0]): Sink(
+            label=label(l, "limit sink"),
+            inputs={
+                limit_buses[(l[0].regions, l[0].vectors[0])]: Flow(
+                    nominal_value=l[1]["natural domestic limit"]
+                    * (pow(10, 9) / 3600),
+                    summed_max=1,
+                )
+            },
         )
-        for l in find(mappings, "natural domestic limit")
+        for l in limits
     }
     fueled = chain(
         find(mappings, "emission factor"),
@@ -420,16 +432,6 @@ def flexible(mappings, buses):
                             + f[1].get("fuel costs", 0)
                         )
                     ),
-                    **(
-                        {
-                            "summed_max": (
-                                limits[(f[0].regions, f[0].vectors[0])]
-                                / f[1]["installed capacity"]
-                            )
-                        }
-                        if (f[0].regions, f[0].vectors[0]) in limits
-                        else {}
-                    ),
                 )
             },
         )
@@ -447,6 +449,11 @@ def flexible(mappings, buses):
                     **(
                         {buses[("DE", "waste")]: Flow()}
                         if "waste" in f[0].vectors
+                        else {}
+                    ),
+                    **(
+                        {limit_buses[(f[0].regions, f[0].vectors[0])]: Flow()}
+                        if (f[0].regions, f[0].vectors[0]) in limit_buses
                         else {}
                     ),
                 },
