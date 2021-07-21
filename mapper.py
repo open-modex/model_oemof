@@ -576,20 +576,9 @@ def build(mappings, year):
         ]
     ]
 
-    # This would be the correct way of computing the total_demand. Correct,
-    # because it's always in sync with how the demand sinks are computed.
-    #
-    # demand_sinks = demands(mappings, buses)
-    # total_demand = sum(
-    #     v for sink in demand_sinks for v in list(sink.inputs.values[0].fix)
-    # )
-
-    # But this way should also work, although it's a bit fragile, because one
-    # could change the way the demand_sinks are generated without updating
-    # this. It avoids having to change the `es.add(*demands(mappings, buses))`
-    # line though.
+    demand_sinks = demands(mappings, buses)
     total_demand = sum(
-        v for demand in find(mappings, "demand") for v in demand[1]["demand"]
+        v for sink in demand_sinks for v in list(sink.inputs.values[0].fix)
     )
     renewables = ("DE", "renewable share")
     buses[renewables] = buses.get(renewables, Bus(label=renewables))
@@ -679,7 +668,7 @@ def build(mappings, year):
         ]
     )
 
-    es.add(*demands(mappings, buses))
+    es.add(*demand_sinks)
     es.add(*lines(mappings, buses))
     es.add(*trades(mappings, buses))
     es.add(*fixed(mappings, buses))
