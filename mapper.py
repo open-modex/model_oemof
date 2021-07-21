@@ -188,6 +188,7 @@ def reducer(dictionary, value):
 
 
 def from_json(path):
+    logger.info("Reading mappings.")
     base = {"concrete": slurp(path)}
     for mapping in base:
         logger.info(
@@ -507,6 +508,7 @@ def storages(mappings, buses):
 
 
 def build(mappings, year):
+    logger.info("Building the energy system.")
     es = ES(
         timeindex=pd.date_range(
             f"{year}-01-01T00:00:00", f"{year}-12-31T23:00:00", freq="1h"
@@ -655,6 +657,7 @@ def build(mappings, year):
 
 
 def export(mappings, meta, results, year):
+    logger.info("Exporting the results.")
     path = Path("results")
     path.mkdir(exist_ok=True)
 
@@ -1069,10 +1072,17 @@ def main(path, verbosity):
     year = 2016
     mappings = from_json(path)[year]
     es = build(mappings, year)
+
+    logger.info("Building the model.")
     om = Model(es)
+
+    logger.info("Starting the solver.")
     om.solve(solver="cbc")  # , solve_kwargs={'tee': True})
+
+    logger.info("Processing the results.")
     results = processing.results(om)
     meta = processing.meta_results(om)
+
     export(mappings, meta, results, year)
     return (es, om)
 
