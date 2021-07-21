@@ -1,6 +1,6 @@
 from collections import namedtuple
 from csv import DictWriter, field_size_limit as csv_field_size_limit
-from dataclasses import asdict, dataclass, fields, replace
+from dataclasses import asdict, astuple, dataclass, fields, replace
 from datetime import datetime
 from functools import reduce
 from itertools import chain, groupby
@@ -271,7 +271,21 @@ def vectors(mappings):
     return set([m.vectors for m in mappings])
 
 
-Label = namedtuple("Label", ["regions", "technology", "vectors", "name"])
+@dataclass(eq=True, frozen=True)
+class Label:
+    regions: Tuple[str]
+    technology: Tuple[str, str]
+    vectors: Tuple[str, str]
+    name: str
+
+    def __str__(self):
+        return (
+            f"{self.name}, {' -> '.join(self.regions)}:"
+            f" {', '.join(self.technology)} / {', '.join(self.vectors)}"
+        )
+
+    def __iter__(self):
+        return astuple(self).__iter__()
 
 
 def label(mapping, name):
@@ -305,7 +319,7 @@ def transmission(line, buses, ratios):
 
     lines = [
         Transformer(
-            label=label(line, "energy flow")._replace(regions=regions),
+            label=replace(label(line, "energy flow"), regions=regions,),
             inputs={source: Flow()},
             outputs={flow_bus: Flow(), loss_bus: Flow(), target: Flow()},
             conversion_factors={
