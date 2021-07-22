@@ -1321,7 +1321,7 @@ def export(mappings, meta, results, year):
     metavar="<scenario file>",
     type=click.Path(exists=True, dir_okay=False),
 )
-@click.option("--year", required=True, show_default=True)
+@click.option("--year", required=True, show_default=True, type=int)
 @click.option(
     "--verbosity",
     default="WARNING",
