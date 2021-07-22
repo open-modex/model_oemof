@@ -349,7 +349,7 @@ def from_json(path):
     logger.info("Reading JSON.")
     base = {"concrete": slurp(path)}
     for mapping in base:
-        logger.info(
+        logger.debug(
             f"\n{mapping} top-level keys/lengths:"
             f"\n{pf([(k, len(base[mapping][k])) for k in base[mapping]])}"
         )
@@ -364,7 +364,7 @@ def from_json(path):
         for mapping in base
     }
     for mapping in base:
-        logger.info(f"\n{mapping} time series boundaries:" f"\n{pf(tsbs)}")
+        logger.debug(f"\n{mapping} time series boundaries:" f"\n{pf(tsbs)}")
     reduced = reduce(
         reducer,
         chain(
