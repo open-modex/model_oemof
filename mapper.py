@@ -752,7 +752,7 @@ def build(mappings, year):
 
     demand_sinks = demands(mappings, buses)
     total_demand = sum(
-        v for sink in demand_sinks for v in list(sink.inputs.values[0].fix)
+        v for sink in demand_sinks for v in list(sink.inputs.values())[0].fix
     )
     renewables = ("DE", "renewables")
     buses[renewables] = buses.get(renewables, Bus(label=renewables))
