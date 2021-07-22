@@ -346,7 +346,7 @@ def reducer(dictionary, value):
 
 
 def from_json(path):
-    logger.info("Reading mappings.")
+    logger.info("Reading JSON.")
     base = {"concrete": slurp(path)}
     for mapping in base:
         logger.info(
