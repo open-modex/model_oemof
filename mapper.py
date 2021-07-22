@@ -695,12 +695,12 @@ def storages(mappings, buses):
     ]
 
 
-def build(mappings, year):
+def build(mappings, timesteps, year):
     logger.info("Building the energy system.")
     es = ES(
         timeindex=pd.date_range(
             f"{year}-01-01T00:00:00", f"{year}-12-31T23:00:00", freq="1h"
-        )
+        )[0:timesteps]
     )
 
     rvs = set(
@@ -1346,7 +1346,13 @@ def export(mappings, meta, results, year):
     show_default=True,
     help="Print solver output.",
 )
-@click.option("--timesteps", default=None, type=int)
+@click.option(
+    "--timesteps",
+    default=None,
+    metavar="<n>",
+    help="Limit the modelled time index to the first <n> steps.",
+    type=int,
+)
 def main(path, tee, timesteps, verbosity, year):
     """Read <scenario file>, build the corresponding model and solve it.
 
@@ -1359,7 +1365,7 @@ def main(path, tee, timesteps, verbosity, year):
         logger.add(sys.stderr, level=verbosity)
 
     mappings = from_json(path)[year]
-    es = build(mappings, year)
+    es = build(mappings, timesteps, year)
 
     logger.info("Building the model.")
     om = Model(es)
