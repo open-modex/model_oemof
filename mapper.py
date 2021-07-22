@@ -1372,7 +1372,6 @@ def main(path, tee, timesteps, verbosity, year):
 
     logger.info("Starting the solver.")
     om.solve(solver="gurobi", solve_kwargs={"tee": tee})
-    om.solve(solver="cbc", solve_kwargs={"tee": tee})
 
     logger.info("Processing the results.")
     results = processing.results(om)
