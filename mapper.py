@@ -1364,11 +1364,15 @@ def export(mappings, meta, results, year):
     help="Limit the modelled time index to the first <n> steps.",
     type=int,
 )
-def main(path, tee, timesteps, verbosity, year):
+def cli(*xs, **ks):
     """Read <scenario file>, build the corresponding model and solve it.
 
     The <scenario file> should be a JSON file containing all input data.
     """
+    return main(*xs, **ks)
+
+
+def main(path, tee, timesteps, verbosity, year):
     if verbosity == "SILENT":
         logger.disable(__name__)
     else:
@@ -1403,4 +1407,4 @@ def find(d, *xs, **kws):
 
 
 if __name__ == "__main__":
-    main()
+    cli()
