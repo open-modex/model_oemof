@@ -665,6 +665,8 @@ def flexible(mappings, buses):
         sources
         + [b for source in sources for b in source.outputs]
         + [t for source in sources for b in source.outputs for t in b.outputs]
+        + list(limit_buses.values())
+        + list(limit_sinks.values())
     )
 
 
