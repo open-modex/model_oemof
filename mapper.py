@@ -650,7 +650,7 @@ def flexible(mappings, buses):
                     ),
                     **(
                         {
-                             limit_buses[(f[0].regions, f[0].vectors[0])]: (
+                            limit_buses[(f[0].regions, f[0].vectors[0])]: (
                                 1 / f[1]["output ratio"]
                             )
                         }
