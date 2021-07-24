@@ -648,6 +648,15 @@ def flexible(mappings, buses):
                         if "waste" in f[0].vectors
                         else {}
                     ),
+                    **(
+                        {
+                             limit_buses[(f[0].regions, f[0].vectors[0])]: (
+                                1 / f[1]["output ratio"]
+                            )
+                        }
+                        if (f[0].regions, f[0].vectors[0]) in limit_buses
+                        else {}
+                    ),
                 },
             )
         ]
