@@ -1088,10 +1088,7 @@ def export(mappings, meta, results, year):
             or ((type(key[0]) is Storage) and (key[1] is None))
         )
         if "invest" in results[key]["scalars"]
-        if (
-            key[1] is not None
-            and tuple(key[1].label)[-1] != "pv expansion limit"
-        )
+        if key[1] is None or tuple(key[1].label)[-1] != "pv expansion limit"
         for label in [key[0].label]
         for value in [results[key]["scalars"]["invest"].sum() / 1000]
         if value > 0
