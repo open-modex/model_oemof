@@ -898,7 +898,7 @@ def export(mappings, meta, results, year):
     ]
     defaults = {
         "scenario_id": 1,
-        "unit": "MW/h",
+        "unit": "MW",
         "tags": "",
         "method": '{"value": "timeseries"}',
         "source": "oemof",
@@ -1031,7 +1031,7 @@ def export(mappings, meta, results, year):
             "technology_type": key[4],
             "parameter_name": key[5],
             "value": value,
-            "unit": "GWh/a",
+            "unit": "GWh",
         }
         for key, group in groupby(series, group)
         for value in [sum(chain(*(row["series"] for row in group))) / 1000]
@@ -1048,7 +1048,7 @@ def export(mappings, meta, results, year):
             "technology_type": "ALL",
             "parameter_name": "emissions",
             "value": value,
-            "unit": "Gt/a",
+            "unit": "Gt",
         }
         for key, group in groupby(
             (
@@ -1079,7 +1079,7 @@ def export(mappings, meta, results, year):
             "technology_type": label.technology[1],
             "parameter_name": "added capacity",
             "value": value,
-            "unit": "GWh/a" if type(key[0]) is Storage else "GW/a",
+            "unit": "GWh" if type(key[0]) is Storage else "GW",
         }
         for key in results
         if (type(key[1]) is not Storage)
@@ -1103,7 +1103,7 @@ def export(mappings, meta, results, year):
             "technology_type": label.technology[1],
             "parameter_name": "capacity",
             "value": value / 1000,
-            "unit": "GWh/a" if type(key[0]) is Storage else "GW/a",
+            "unit": "GWh" if type(key[0]) is Storage else "GW",
         }
         for key in results
         for label in [key[0].label]
@@ -1140,7 +1140,7 @@ def export(mappings, meta, results, year):
         "output_energy_vector": "ALL",
         "technology": "ALL",
         "technology_type": "ALL",
-        "unit": "€/a",
+        "unit": "€",
     }
     costs = [
         {
@@ -1217,7 +1217,7 @@ def export(mappings, meta, results, year):
             "technology_type": key[3],
             "parameter_name": "losses",
             "value": value / 1000,
-            "unit": "GWh/a",
+            "unit": "GWh",
         }
         for key, group in groupby(
             (
@@ -1255,7 +1255,7 @@ def export(mappings, meta, results, year):
             if row["technology"]
             in ["wind turbine", "photovoltaics", "hydro turbine"]
         ),
-        "unit": "GWh/a",
+        "unit": "GWh",
     }
 
     del defaults["unit"]
