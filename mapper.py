@@ -817,22 +817,6 @@ def build(mappings, timesteps, year):
         )
     )
 
-    es.add(
-        *[
-            Sink(
-                label=Label(
-                    regions=(rv[0],),
-                    technology=("ALL", "ALL"),
-                    vectors=(rv[1], rv[1]),
-                    name="curtailment",
-                ),
-                inputs={buses[rv]: Flow()},
-            )
-            for rv in buses
-            if rv[1] == "electricity"
-        ]
-    )
-
     Source.slack_costs = sum(
         max(p[1][f"{c} costs"] for p in find(mappings, f"{c} costs"))
         for c in ["variable", "fixed", "capital"]
@@ -859,6 +843,25 @@ def build(mappings, timesteps, year):
     es.add(*fixed(mappings, buses))
     es.add(*flexible(mappings, buses))
     es.add(*storages(mappings, buses))
+
+    renewable_auxiliary_buses = [
+        bus
+        for transformer in buses[("DE", "renewables")].inputs
+        for bus in transformer.inputs
+    ]
+    for bus in renewable_auxiliary_buses:
+        assert tuple(bus.label)[-1] == "auxiliary-bus"
+    es.add(
+        Sink(
+            label=Label(
+                regions=("DE",),
+                technology=("renewables", "unknown"),
+                vectors=("electricity", "electricity"),
+                name="curtailment",
+            ),
+            inputs={bus: Flow() for bus in renewable_auxiliary_buses},
+        )
+    )
 
     return es
 
