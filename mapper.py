@@ -1030,10 +1030,12 @@ def export(mappings, meta, results, year):
             "technology": key[3],
             "technology_type": key[4],
             "parameter_name": key[5],
-            "value": sum(chain(*(row["series"] for row in group))) / 1000,
+            "value": value,
             "unit": "GWh/a",
         }
         for key, group in groupby(series, group)
+        for value in [sum(chain(*(row["series"] for row in group))) / 1000]
+        if value > 0
     ]
 
     series = sorted(series, key=lambda row: row["region"])
@@ -1045,12 +1047,7 @@ def export(mappings, meta, results, year):
             "technology": "ALL",
             "technology_type": "ALL",
             "parameter_name": "emissions",
-            "value": sum(
-                sum(row["series"]) * m["emission factor"] / m["output ratio"]
-                for row in group
-                for m in [mappings[Key.from_dictionary(row)]]
-            )
-            / pow(10, 9),
+            "value": value,
             "unit": "Gt/a",
         }
         for key, group in groupby(
@@ -1062,6 +1059,15 @@ def export(mappings, meta, results, year):
             ),
             lambda row: row["region"],
         )
+        for value in [
+            sum(
+                sum(row["series"]) * m["emission factor"] / m["output ratio"]
+                for row in group
+                for m in [mappings[Key.from_dictionary(row)]]
+            )
+            / pow(10, 9)
+        ]
+        if value > 0
     ]
 
     investments = [
@@ -1072,7 +1078,7 @@ def export(mappings, meta, results, year):
             "technology": label.technology[0],
             "technology_type": label.technology[1],
             "parameter_name": "added capacity",
-            "value": results[key]["scalars"]["invest"].sum() / 1000,
+            "value": value,
             "unit": "GWh/a" if type(key[0]) is Storage else "GW/a",
         }
         for key in results
@@ -1087,6 +1093,8 @@ def export(mappings, meta, results, year):
             and tuple(key[1].label)[-1] != "pv expansion limit"
         )
         for label in [key[0].label]
+        for value in [results[key]["scalars"]["invest"].sum() / 1000]
+        if value > 0
     ]
 
     total_capacity = [
@@ -1113,6 +1121,7 @@ def export(mappings, meta, results, year):
             if type(key[0]) is Storage
             else flow.nominal_value
         ]
+        if value > 0
     ]
 
     regions = sorted({region for row in series for region in row["region"]})
@@ -1210,17 +1219,7 @@ def export(mappings, meta, results, year):
             "technology": key[2],
             "technology_type": key[3],
             "parameter_name": "losses",
-            "value": sum(
-                sum(row["series"])
-                * (
-                    (1 - m["input ratio"])
-                    if row["parameter_name"] == "input energy"
-                    else (1 / m["output ratio"] - 1)
-                )
-                for row in group
-                for m in [mappings[Key.from_dictionary(row)]]
-            )
-            / 1000,
+            "value": value / 1000,
             "unit": "GWh/a",
         }
         for key, group in groupby(
@@ -1231,6 +1230,19 @@ def export(mappings, meta, results, year):
             ),
             key=group,
         )
+        for value in [
+            sum(
+                sum(row["series"])
+                * (
+                    (1 - m["input ratio"])
+                    if row["parameter_name"] == "input energy"
+                    else (1 / m["output ratio"] - 1)
+                )
+                for row in group
+                for m in [mappings[Key.from_dictionary(row)]]
+            )
+        ]
+        if value > 0
     ]
 
     renewables = {
