@@ -234,6 +234,10 @@ def invest(mapping):
     )
     if "E2P ratio" in mapping[1]:
         ratio = 1 / mapping[1]["E2P ratio"]
+        # TODO: Figure out whether these have to be multiplied with
+        #       `mapping[1]["input ratio"]` or `mapping[1]["output ratio"]`
+        #       respectively. See also the corresponding TODO at storage
+        #       construction.
         optionals["invest_relation_input_capacity"] = ratio
         optionals["invest_relation_output_capacity"] = ratio
     return {
@@ -691,6 +695,9 @@ def storages(mappings, buses):
         )
         for storage in find(mappings, "E2P ratio")
         for investment in [invest(storage)]
+        # TODO: Figure out whether these nominal values have to be multiplied
+        #       with `storage[1]["input ratio"]` or
+        #       `storage[1]["output ratio"]` respectively.
         for nv in [
             {"nominal_value": storage[1].get("installed capacity", 0)}
             if "investment" not in investment
