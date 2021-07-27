@@ -703,14 +703,7 @@ def storages(mappings, buses):
         for nv in [
             {"nominal_value": storage[1].get("installed capacity", 0)}
             if "investment" not in investment
-            else {
-                # The investment is bounded by the storage capacity through the
-                # flow conversion factors, so we can keep ep_costs and maximum
-                # at the default valus of `0` and `inf` respectively.
-                "investment": Investment(
-                    existing=storage[1].get("installed capacity", 0)
-                )
-            }
+            else {}
         ]
     ]
 
