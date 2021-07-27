@@ -232,15 +232,17 @@ def invest(mapping):
         and mapping[1]["expansion limit"] != 999999.0
         else {}
     )
+    ratios = {}
     if "E2P ratio" in mapping[1]:
         ratio = 1 / mapping[1]["E2P ratio"]
         # TODO: Figure out whether these have to be multiplied with
         #       `mapping[1]["input ratio"]` or `mapping[1]["output ratio"]`
         #       respectively. See also the corresponding TODO at storage
         #       construction.
-        optionals["invest_relation_input_capacity"] = ratio
-        optionals["invest_relation_output_capacity"] = ratio
+        ratios["invest_relation_input_capacity"] = ratio
+        ratios["invest_relation_output_capacity"] = ratio
     return {
+        **ratios,
         "investment": Investment(
             ep_costs=annuity(
                 mapping[1].get(
