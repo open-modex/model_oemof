@@ -336,18 +336,23 @@ def reducer(dictionary, value):
             assert (value["parameter_name"] not in dictionary[key]) or (
                 dictionary[key][value["parameter_name"]]
                 == (value["value"] if "value" in value else value["series"])
+                and dictionary[key]["units"][value["parameter_name"]]
+                == value["unit"]
             ), textwrap.indent(
                 f'\n\nParameter\n\n  {value["parameter_name"]}\n'
                 f"\nalready present under\n\n  {key}\n"
                 f'\nOld value: {dictionary[key][value["parameter_name"]]}'
-                f'\nNew value: {value.get("value", "Series ommitted...")}',
+                f'{dictionary[key]["units"][value["parameter_name"]]}'
+                f'\nNew value: {value.get("value", "Series ommitted...")}'
+                f'{value["unit"]}',
                 "  ",
             )
         else:
-            dictionary[key] = {}
+            dictionary[key] = {"units": {}}
         dictionary[key][value["parameter_name"]] = (
             value["value"] if "value" in value else value["series"]
         )
+        dictionary[key]["units"][value["parameter_name"]] = value["unit"]
     return dictionary
 
 
