@@ -400,22 +400,12 @@ def from_json(path):
             for year in years
         }
     )
-    result["techs"] = {year: techs(result[year]) for year in years}
-    result["vectors"] = {year: vectors(result[year]) for year in years}
     # assertion: len(o.region) == 2
     # =>  o.technology == ('transmission', 'hvac')
     # and o.vectors    == ('electricity', 'electricity')
     #
     # len(o.region) > 2 => 16 (DE) or 18
     return result
-
-
-def techs(mappings):
-    return set([m.technology for m in mappings])
-
-
-def vectors(mappings):
-    return set([m.vectors for m in mappings])
 
 
 @dataclass(eq=True, frozen=True)
