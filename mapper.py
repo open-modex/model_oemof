@@ -125,7 +125,7 @@ def sankey(df):
 
         else:
             raise ValueError(
-                "Can't decide whether to keep source or target of {key}."
+                f"Can't decide whether to keep source or target of {key}."
             )
         sums = sums.drop(key)
         sums = sums.set_axis(sums.index.map(keep))
