@@ -116,7 +116,7 @@ def sankey(df):
                     return (key[0], k[1])
                 return k
 
-        elif sums.get(idx[key[1], :]) is None:
+        elif sums.get(idx[key[1],]) is None:
             # keep = 1
             def keep(k):
                 if k[1] == key[0]:
