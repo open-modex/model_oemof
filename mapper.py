@@ -441,7 +441,7 @@ def label(mapping, name):
     )
 
 
-def demands(mappings, buses):
+def demands(buses, mappings):
     return [
         Sink(
             label=label(demand, "demand"),
@@ -455,7 +455,7 @@ def demands(mappings, buses):
     ]
 
 
-def transmission(line, buses, ratios):
+def transmission(buses, line, ratios):
     loss_bus = Bus(label=label(line, "losses"))
     loss = Sink(label=label(line, "loss-sink"), inputs={loss_bus: Flow()})
     flow_bus = Bus(label=label(line, "flow-bus"))
@@ -483,7 +483,7 @@ def transmission(line, buses, ratios):
     return lines + [flow_bus, flow, loss_bus, loss]
 
 
-def lines(mappings, buses):
+def lines(buses, mappings):
     ratios = {
         ratio[0].regions[0]: {
             "ir": ratio[1]["input ratio"],
@@ -509,11 +509,11 @@ def lines(mappings, buses):
         for line in find(mappings, technology=("transmission", "hvac"))
         + find(mappings, technology=("transmission", "DC"))
         if len(line[0].regions) == 2
-        for node in transmission(line, buses, ratios)
+        for node in transmission(buses, line, ratios)
     ]
 
 
-def trades(mappings, buses):
+def trades(buses, mappings):
     imports = find(mappings, technology=("transmission", "trade import"))
     exports = find(mappings, technology=("transmission", "trade export"))
     sinks = [
@@ -542,7 +542,7 @@ def trades(mappings, buses):
     return sinks + sources
 
 
-def fixed(mappings, buses):
+def fixed(buses, mappings):
     sources = [
         Source(
             label=label(source, "electricity generation"),
@@ -583,7 +583,7 @@ def fixed(mappings, buses):
     )
 
 
-def flexible(mappings, buses):
+def flexible(buses, mappings):
     limits = find(mappings, "natural domestic limit")
     limit_buses = {
         (l[0].regions, l[0].vectors[0]): Bus(label=label(l, "limit bus"))
@@ -681,7 +681,7 @@ def flexible(mappings, buses):
     )
 
 
-def storages(mappings, buses):
+def storages(buses, mappings):
     return [
         Storage(
             label=label(storage, "storage"),
@@ -768,7 +768,7 @@ def build(mappings, timesteps, year):
         ]
     ]
 
-    demand_sinks = demands(mappings, buses)
+    demand_sinks = demands(buses, mappings)
     total_demand = sum(
         v for sink in demand_sinks for v in list(sink.inputs.values())[0].fix
     )
@@ -845,11 +845,11 @@ def build(mappings, timesteps, year):
     )
 
     es.add(*demand_sinks)
-    es.add(*lines(mappings, buses))
-    es.add(*trades(mappings, buses))
-    es.add(*fixed(mappings, buses))
-    es.add(*flexible(mappings, buses))
-    es.add(*storages(mappings, buses))
+    es.add(*lines(buses, mappings))
+    es.add(*trades(buses, mappings))
+    es.add(*fixed(buses, mappings))
+    es.add(*flexible(buses, mappings))
+    es.add(*storages(buses, mappings))
 
     renewable_auxiliary_buses = [
         bus
