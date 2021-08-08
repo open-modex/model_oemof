@@ -1414,7 +1414,9 @@ def export(
         " directory."
     ),
 )
-@click.option("--year", required=True, show_default=True, type=int)
+@click.option(
+    "--year", metavar="<year>", required=True, show_default=True, type=int
+)
 @click.option(
     "--verbosity",
     default="WARNING",
