@@ -1434,6 +1434,7 @@ def export(
         ],
         case_sensitive=False,
     ),
+    help="Control the verbosity level.",
 )
 @click.option(
     "--tee/--no-tee",
