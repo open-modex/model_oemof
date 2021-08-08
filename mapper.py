@@ -447,9 +447,12 @@ def demands(buses, mappings):
     ]
 
 
-def transmission(buses, line, ratios):
+def transmission(buses, line, penalties, ratios):
     loss_bus = Bus(label=label(line, "losses"))
-    loss = Sink(label=label(line, "loss-sink"), inputs={loss_bus: Flow()})
+    loss = Sink(
+        label=label(line, "loss-sink"),
+        inputs={loss_bus: Flow(variable_costs=penalties["transmission"])},
+    )
     flow_bus = Bus(label=label(line, "flow-bus"))
     flow = Sink(
         label=label(line, "energy flow (both directions)"),
@@ -475,7 +478,7 @@ def transmission(buses, line, ratios):
     return lines + [flow_bus, flow, loss_bus, loss]
 
 
-def lines(buses, mappings):
+def lines(buses, mappings, penalties):
     ratios = {
         ratio[0].regions[0]: {
             "ir": ratio[1]["input ratio"],
@@ -501,7 +504,7 @@ def lines(buses, mappings):
         for line in find(mappings, technology=("transmission", "hvac"))
         + find(mappings, technology=("transmission", "DC"))
         if len(line[0].regions) == 2
-        for node in transmission(buses, line, ratios)
+        for node in transmission(buses, line, penalties, ratios)
     ]
 
 
@@ -673,7 +676,7 @@ def flexible(buses, mappings):
     )
 
 
-def storages(buses, mappings):
+def storages(buses, mappings, penalties):
     return [
         Storage(
             label=label(storage, "storage"),
@@ -683,7 +686,9 @@ def storages(buses, mappings):
             outflow_conversion_factor=storage[1]["output ratio"],
             inputs={
                 buses[(storage[0].regions[0], storage[0].vectors[0])]: Flow(
-                    **nv, variable_costs=storage[1].get("variable costs", 0),
+                    **nv,
+                    variable_costs=storage[1].get("variable costs", 0)
+                    + penalties["storage"],
                 )
             },
             outputs={
@@ -705,7 +710,7 @@ def storages(buses, mappings):
     ]
 
 
-def build(mappings, timesteps, year):
+def build(mappings, penalties, timesteps, year):
     logger.info("Building the energy system.")
     es = ES(
         timeindex=pd.date_range(
@@ -837,11 +842,11 @@ def build(mappings, timesteps, year):
     )
 
     es.add(*demand_sinks)
-    es.add(*lines(buses, mappings))
+    es.add(*lines(buses, mappings, penalties))
     es.add(*trades(buses, mappings))
     es.add(*fixed(buses, mappings))
     es.add(*flexible(buses, mappings))
-    es.add(*storages(buses, mappings))
+    es.add(*storages(buses, mappings, penalties))
 
     renewable_auxiliary_buses = [
         bus
@@ -875,6 +880,7 @@ def export(
     export_prefix,
     mappings,
     meta,
+    penalties,
     results,
     temporary_directory,
     year,
@@ -1170,6 +1176,20 @@ def export(
                 if type(k[0]) is Source
                 if "slack" == k[0].label.name
                 for megawatthours in results[k]["sequences"].iloc[:, 0]
+            )
+            - sum(
+                megawatthours * penalties["storage"]
+                for k in results
+                if type(k[1]) is Storage
+                for megawatthours in results[k]["sequences"].iloc[:, 0]
+            )
+            - sum(
+                megawatthours * penalties["transmission"]
+                for k in results
+                if type(k[1]) is Sink
+                if type(k[1].label) is Label
+                if k[1].label.name == "loss-sink"
+                for megawatthours in results[k]["sequences"].iloc[:, 0]
             ),
         }
     ]
@@ -1426,17 +1446,46 @@ def export(
     help="Limit the modelled time index to the first <n> steps.",
     type=int,
 )
+@click.option(
+    "--transmission-penalty",
+    default=0,
+    metavar="<costs>",
+    help=(
+        "Discourage transmission usage by putting penalty variable <costs> on"
+        " transmission losses."
+    ),
+    show_default=True,
+    type=float,
+)
+@click.option(
+    "--storage-penalty",
+    default=0,
+    metavar="<costs>",
+    help=(
+        "Discourage storage usage by putting penalty variable <costs> on"
+        " storage inputs."
+    ),
+    show_default=True,
+    type=float,
+)
 def cli(*xs, **ks):
     """Read <scenario file>, build the corresponding model and solve it.
 
     The <scenario file> should be a JSON file containing all input data.
     """
+    ks["penalties"] = {
+        "storage": ks["storage_penalty"],
+        "transmission": ks["transmission_penalty"],
+    }
+    del ks["storage_penalty"]
+    del ks["transmission_penalty"]
     return main(*xs, **ks)
 
 
 def main(
     export_prefix,
     path,
+    penalties,
     tee,
     temporary_directory,
     timesteps,
@@ -1450,7 +1499,7 @@ def main(
         logger.add(sys.stderr, level=verbosity)
 
     mappings = from_json(path)[year]
-    es = build(mappings, timesteps, year)
+    es = build(mappings, penalties, timesteps, year)
 
     logger.info("Building the model.")
     om = Model(es)
@@ -1466,7 +1515,7 @@ def main(
         temporary(temporary_directory) if temporary_directory else TD(dir=".")
     ) as td:
         td = Path(td)
-        export(export_prefix, mappings, meta, results, td, year)
+        export(export_prefix, mappings, meta, penalties, results, td, year)
     return (es, om)
 
 
