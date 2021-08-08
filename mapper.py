@@ -872,6 +872,7 @@ def temporary(path):
 
 
 def export(
+    export_prefix,
     mappings,
     meta,
     results,
@@ -884,7 +885,9 @@ def export(
     path = base / subdirectory
     path.mkdir(exist_ok=True)
 
-    store = pd.HDFStore(f"oemof{year}.results.df.h5", "w")
+    store = pd.HDFStore(
+        f"{export_prefix.format(year=year)}.results.df.h5", "w",
+    )
     df = rs2df(results)
     store["results"] = df.set_axis(
         df.columns.map(lambda xs: tuple(f"{x}" for x in xs)), axis="columns"
@@ -1348,7 +1351,7 @@ def export(
                     },
                 }
             ]
-    package.to_zip(f"oemof{year}.zip")
+    package.to_zip(f"{export_prefix.format(year=year)}.zip")
 
     return None
 
@@ -1358,6 +1361,24 @@ def export(
     "path",
     metavar="<scenario file>",
     type=click.Path(exists=True, dir_okay=False),
+)
+@click.option(
+    "--export-prefix",
+    default="oemof{year}",
+    metavar="<prefix>",
+    help=(
+        "The prefix of files to which result data is exported for from which"
+        " it is read. Defaults to `oemof{year}`. Currently, two files are"
+        " taken into account:\n\n<prefix>.results.df.h5 - An HDF5 file, where"
+        " (sequential) results will be exported to as a `pandas.DataFrame`,"
+        " saved under the 'results' key."
+        "\n\n<prefix>.zip - A zipped datapackage containing some of the"
+        " results in a format conforming to the oedatamodel.\n\nNote, that in"
+        " the case of exportation, any existing files will be overwritten."
+        " Note also that names appearing enclosed in curly braces will be"
+        " replaced with their value. Currently the following such names are"
+        " supported:\n\nyear - the value supplied via the `--year` option."
+    ),
 )
 @click.option(
     "--temporary-directory",
@@ -1414,6 +1435,7 @@ def cli(*xs, **ks):
 
 
 def main(
+    export_prefix,
     path,
     tee,
     temporary_directory,
@@ -1444,7 +1466,7 @@ def main(
         temporary(temporary_directory) if temporary_directory else TD(dir=".")
     ) as td:
         td = Path(td)
-        export(mappings, meta, results, td, year)
+        export(export_prefix, mappings, meta, results, td, year)
     return (es, om)
 
 
