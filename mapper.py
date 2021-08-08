@@ -1,5 +1,6 @@
 from collections import namedtuple
 from csv import DictWriter, field_size_limit as csv_field_size_limit
+from contextlib import contextmanager
 from dataclasses import asdict, astuple, dataclass, fields, replace
 from datetime import datetime
 from functools import reduce
@@ -864,6 +865,12 @@ def build(mappings, timesteps, year):
     return es
 
 
+@contextmanager
+def temporary(path):
+    path = Path(path)
+    yield path
+
+
 def export(
     mappings,
     meta,
@@ -1352,6 +1359,20 @@ def export(
     metavar="<scenario file>",
     type=click.Path(exists=True, dir_okay=False),
 )
+@click.option(
+    "--temporary-directory",
+    type=click.Path(file_okay=False, writable=True, path_type=Path),
+    help=(
+        "The directory in which to store temporary files. If not specified,"
+        " one will created and cleaned up automatically. If the parameter is"
+        " specified, the given directory will be created if it doesn't exist"
+        " and it will be used to store temporary files, but it will not be"
+        " cleaned up automatically, so you can use this parameter to inspect"
+        " the temporary files if you need to. Note that any supplied directory"
+        " has to be a relative path pointing to a subdirectory of the working"
+        " directory."
+    ),
+)
 @click.option("--year", required=True, show_default=True, type=int)
 @click.option(
     "--verbosity",
@@ -1392,7 +1413,14 @@ def cli(*xs, **ks):
     return main(*xs, **ks)
 
 
-def main(path, tee, timesteps, verbosity, year):
+def main(
+    path,
+    tee,
+    temporary_directory,
+    timesteps,
+    verbosity,
+    year,
+):
     if verbosity == "SILENT":
         logger.disable(__name__)
     else:
@@ -1412,7 +1440,9 @@ def main(path, tee, timesteps, verbosity, year):
     results = processing.results(om)
     meta = processing.meta_results(om)
 
-    with TD(dir=".") as td:
+    with (
+        temporary(temporary_directory) if temporary_directory else TD(dir=".")
+    ) as td:
         td = Path(td)
         export(mappings, meta, results, td, year)
     return (es, om)
