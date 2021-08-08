@@ -6,6 +6,7 @@ from functools import reduce
 from itertools import chain, groupby
 from pathlib import Path
 from pprint import pformat as pf
+from tempfile import TemporaryDirectory as TD
 from typing import Tuple
 import json
 import re
@@ -863,9 +864,17 @@ def build(mappings, timesteps, year):
     return es
 
 
-def export(mappings, meta, results, year):
+def export(
+    mappings,
+    meta,
+    results,
+    temporary_directory,
+    year,
+):
     logger.info("Exporting the results.")
-    path = Path("results")
+    base = temporary_directory
+    subdirectory = Path("results")
+    path = base / subdirectory
     path.mkdir(exist_ok=True)
 
     store = pd.HDFStore(f"oemof{year}.results.df.h5", "w")
@@ -1304,11 +1313,12 @@ def export(mappings, meta, results, year):
     resources = [
         Resource(
             {
-                "path": str(path / csvfile),
+                "path": str(subdirectory / csvfile),
                 "dialect": {"delimiter": ";", "quoteChar": "|"},
                 "profile": "tabular-data-resource",
             },
             detector=Detector(field_float_numbers=True),
+            basepath=str(base),
         )
         for csvfile in [
             "oed_scalar_output.csv",
@@ -1402,7 +1412,9 @@ def main(path, tee, timesteps, verbosity, year):
     results = processing.results(om)
     meta = processing.meta_results(om)
 
-    export(mappings, meta, results, year)
+    with TD(dir=".") as td:
+        td = Path(td)
+        export(mappings, meta, results, td, year)
     return (es, om)
 
 
