@@ -392,10 +392,10 @@ def from_json(path):
         }
         for mapping in base
     }
-    result["concrete"]["objects"] = reduced
     years = sorted(
         pd.to_datetime(ts).year for tsb in tsbs["concrete"] for ts in tsb
     )
+    result = {}
     result.update(
         {
             year: {k: reduced[k] for k in reduced if k.year == year}
