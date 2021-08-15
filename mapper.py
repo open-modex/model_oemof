@@ -249,7 +249,7 @@ def invest(mapping):
             ep_costs=annuity(
                 mapping[1].get(
                     "capital costs",
-                    # TODO: Retrieve he capital costs of 446.39 for
+                    # TODO: Retrieve the capital costs of 446.39 for
                     #       transmission lines from the data instead of
                     #       hardcoding it here.
                     0 if len(mapping[0].regions) == 1 else 446.39,
@@ -311,7 +311,7 @@ class Key(dict):
         """`regions` is an alias of `region`.
 
         `region` is the key used in the original JSON data, but since it's a
-        tuple, even it mostly with just one entry, `regions` is a less
+        tuple, even if mostly with just one entry, `regions` is a less
         confusing name.
         """
         return self.region
@@ -1130,7 +1130,7 @@ def export(
         for key in results
         for label in [key[0].label]
         if type(label) is Label
-        and label.name in ["flow_bus", "electricity generation", "storage"]
+        and label.name in ["flow-bus", "electricity generation", "storage"]
         and (type(key[0]) is not Storage or key[1] is None)
         for flow in [key[0].outputs[key[1]] if key[1] is not None else key[0]]
         for value in [
@@ -1225,6 +1225,8 @@ def export(
             ),
         }
     )
+
+    costs[0]["value"] -= costs[-1]["value"]
 
     costs.append(
         {
