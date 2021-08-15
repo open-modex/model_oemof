@@ -1130,7 +1130,7 @@ def export(
         for key in results
         for label in [key[0].label]
         if type(label) is Label
-        and label.name in ["flow_bus", "electricity generation", "storage"]
+        and label.name in ["flow-bus", "electricity generation", "storage"]
         and (type(key[0]) is not Storage or key[1] is None)
         for flow in [key[0].outputs[key[1]] if key[1] is not None else key[0]]
         for value in [
