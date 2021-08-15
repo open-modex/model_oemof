@@ -55,6 +55,9 @@ New Features
     as part of the "variable costs".
     (3dae8aba53cc8ee2834a85c94822879e0633133d)
 
+  * The repository now has a `changelog <./CHANGELOG.rst>`.
+    (9e611223ae7abd3cd93e068d9a7bf9857213f69d)
+
 
 Fixes
 -----
