@@ -249,7 +249,7 @@ def invest(mapping):
             ep_costs=annuity(
                 mapping[1].get(
                     "capital costs",
-                    # TODO: Retrieve he capital costs of 446.39 for
+                    # TODO: Retrieve the capital costs of 446.39 for
                     #       transmission lines from the data instead of
                     #       hardcoding it here.
                     0 if len(mapping[0].regions) == 1 else 446.39,
