@@ -1226,6 +1226,8 @@ def export(
         }
     )
 
+    costs[0]["value"] -= costs[-1]["value"]
+
     costs.append(
         {
             **cost_defaults,
