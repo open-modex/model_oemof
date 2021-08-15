@@ -311,7 +311,7 @@ class Key(dict):
         """`regions` is an alias of `region`.
 
         `region` is the key used in the original JSON data, but since it's a
-        tuple, even it mostly with just one entry, `regions` is a less
+        tuple, even if mostly with just one entry, `regions` is a less
         confusing name.
         """
         return self.region
