@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import abc, namedtuple
 from csv import DictWriter, field_size_limit as csv_field_size_limit
 from contextlib import contextmanager
 from dataclasses import asdict, astuple, dataclass, fields, replace
@@ -321,6 +321,12 @@ class Key(dict):
         for name in names:
             self[name] = getattr(self, name)
 
+    def __str__(self):
+        return (
+            f"{', '.join(self.regions)}, {self.year}"
+            f"; {', '.join(self.technology)}; {', '.join(self.vectors)}"
+        )
+
 
 def reducer(dictionary, value):
     key = Key.from_dictionary(value)
@@ -333,22 +339,29 @@ def reducer(dictionary, value):
         if len(key.region) > 2
         else [key]
     )
+    parameter = value["parameter_name"]
     for key in keys:
         if key in dictionary:
-            assert (value["parameter_name"] not in dictionary[key]) or (
-                dictionary[key][value["parameter_name"]]
-                == (value["value"] if "value" in value else value["series"])
-                and dictionary[key]["units"][value["parameter_name"]]
-                == value["unit"]
-            ), textwrap.indent(
-                f'\n\nParameter\n\n  {value["parameter_name"]}\n'
-                f"\nalready present under\n\n  {key}\n"
-                f'\nOld value: {dictionary[key][value["parameter_name"]]}'
-                f'{dictionary[key]["units"][value["parameter_name"]]}'
-                f'\nNew value: {value.get("value", "Series ommitted...")}'
-                f'{value["unit"]}',
-                "  ",
-            )
+            if parameter in dictionary[key] and (
+                dictionary[key][parameter]
+                != (value["value"] if "value" in value else value["series"])
+                or dictionary[key]["units"][parameter] != value["unit"]
+            ):
+                first = dictionary[key][parameter]
+                first = (
+                    first
+                    if not isinstance(first, abc.Sized) or len(first) > 53
+                    else "Series omitted..."
+                )
+                first = f"{first}{dictionary[key]['units'][parameter]}"
+                dupes = dictionary.get("dupes", {})
+                dupes[key] = dupes.get(key, {})
+                dupes[key][parameter] = dupes[key].get(parameter, [first])
+                dupes[key][parameter].append(
+                    f"{value.get('value', 'Series omitted...')}{value['unit']}"
+                )
+                dictionary["dupes"] = dupes
+                continue
         else:
             dictionary[key] = {"units": {}}
         dictionary[key][value["parameter_name"]] = (
@@ -356,6 +369,23 @@ def reducer(dictionary, value):
         )
         dictionary[key]["units"][value["parameter_name"]] = value["unit"]
     return dictionary
+
+
+def duplicates(mappings):
+    if not "dupes" in mappings:
+        return False
+
+    dupes = mappings["dupes"]
+    output = "\n\n".join(
+        [
+            f"{k}\n"
+            + "\n".join([f"{n}: " + ", ".join(dupes[k][n]) for n in dupes[k]])
+            for k in dupes
+        ]
+    )
+    debug = textwrap.indent(output, "  ")
+    logger.debug(f"Dupes:\n\n{output}")
+    return True
 
 
 def from_json(path):
@@ -385,6 +415,11 @@ def from_json(path):
         ),
         {},
     )
+    assert not duplicates(reduced), (
+        "\n  Duplicate parameter specifications."
+        "\n  Use `--verbosity='debug'` to get a list."
+    )
+
     result = {
         mapping: {
             "base": base[mapping],

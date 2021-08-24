@@ -5,6 +5,14 @@ Changelog
 v0.0.4.dev0
 ===========
 
+New Features
+------------
+
+  * Duplicate detection no longer raises an error when the first
+    duplicate is found. Instead, all duplicate values are collected and
+    logged as debug output. An error is still raised, but only after the
+    complete input data is scanned for duplicates.
+
 
 v0.0.3
 ======
