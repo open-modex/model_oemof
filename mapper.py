@@ -1399,7 +1399,8 @@ def export(
         " the case of exportation, any existing files will be overwritten."
         " Note also that names appearing enclosed in curly braces will be"
         " replaced with their value. Currently the following such names are"
-        " supported:\n\nyear - the value supplied via the `--year` option."
+        " supported:\n\nyear - the currently active year from the `<years>`"
+        " argument"
     ),
 )
 @click.option(
@@ -1416,9 +1417,7 @@ def export(
         " directory."
     ),
 )
-@click.option(
-    "--year", metavar="<year>", required=True, show_default=True, type=int
-)
+@click.argument("years", metavar="<years>...", nargs=-1, type=int)
 @click.option(
     "--verbosity",
     default="WARNING",
@@ -1477,7 +1476,10 @@ def cli(*xs, **ks):
     """Read <scenario file>, build the corresponding model and solve it.
 
     The <scenario file> should be a JSON file containing all input data.
+    The <years> which are given specify the years for which data is
+    taken from the input file to build the model.
     """
+
     ks["penalties"] = {
         "storage": ks["storage_penalty"],
         "transmission": ks["transmission_penalty"],
@@ -1487,23 +1489,15 @@ def cli(*xs, **ks):
     return main(*xs, **ks)
 
 
-def main(
+def process(
     export_prefix,
-    path,
+    mappings,
     penalties,
     tee,
     temporary_directory,
     timesteps,
-    verbosity,
     year,
 ):
-    if verbosity == "SILENT":
-        logger.disable(__name__)
-    else:
-        logger.remove()
-        logger.add(sys.stderr, level=verbosity)
-
-    mappings = from_json(path)[year]
     es = build(mappings, penalties, timesteps, year)
 
     logger.info("Building the model.")
@@ -1522,6 +1516,43 @@ def main(
         td = Path(td)
         export(export_prefix, mappings, meta, penalties, results, td, year)
     return (es, om)
+
+
+def main(
+    export_prefix,
+    path,
+    penalties,
+    tee,
+    temporary_directory,
+    timesteps,
+    verbosity,
+    years,
+):
+    if verbosity == "SILENT":
+        logger.disable(__name__)
+    else:
+        logger.remove()
+        logger.add(sys.stderr, level=verbosity)
+
+    mappings = from_json(path)
+
+    if not years:
+        years = mappings.keys()
+    years = tuple(sorted(set(years)))
+
+    for year in years:
+        logger.info(f"Processing {year}.")
+        process(
+            export_prefix,
+            mappings[year],
+            penalties,
+            tee,
+            temporary_directory,
+            timesteps,
+            year,
+        )
+
+    return
 
 
 def find(d, *xs, **kws):
