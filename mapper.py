@@ -1543,6 +1543,45 @@ def process(
     return (es, om)
 
 
+def scrub(mappings):
+    """Clean up mappings read from JSON.
+
+    Clean up various inconsistencies and errors after reading the input
+    data. These are usually only present in early releases and are
+    subsequently once they are reported. Nonetheless, in order to not be
+    dependent on upstream fixes, the function at hand acts as a central
+    hub collecting cleanup functions for these issues.
+
+    The dictionary passed in as an argument is both, modified in place
+    and returned as well.
+    """
+    # Once the 2020 ("transmission", "DC") expansion limits are gone
+    # from the data, this will no longer be necessary.
+    if 2020 in mappings:
+        dcs = find(mappings[2020], technology=("transmission", "DC"))
+        assert len(dcs) == 3
+        old = len(mappings[2020])
+        for key, _ in dcs:
+            del mappings[2020][key]
+        assert len(mappings[2020]) == old - 3
+
+    # The "lifetime" parameter is missing from the "generator",
+    # "combustion engine", "natural gas", "electricity" mapping in "RP",
+    # so we have to insert it manually.
+    to_fix = [
+        f
+        for year in mappings
+        for f in find(
+            mappings[year],
+            region=("RP",),
+            technology=("generator", "combustion engine"),
+            vectors=("natural gas", "electricity"),
+        )
+    ]
+    to_fix[1]["lifetime"] = to_fix[1].get("lifetime", 25)
+    return mappings
+
+
 def main(
     export_prefix,
     path,
@@ -1564,6 +1603,8 @@ def main(
     if not years:
         years = mappings.keys()
     years = tuple(sorted(set(years)))
+
+    mappings = scrub(mappings)
 
     for year in years:
         logger.info(f"Processing {year}.")
