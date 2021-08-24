@@ -84,6 +84,11 @@ def rs2df(rs):
     )
 
 
+def throw(exception):
+    raise exception
+    return "This should never be reached."
+
+
 def sankey(df):
     idx = pd.IndexSlice
     sums = df.sum()
@@ -252,9 +257,29 @@ def invest(mapping):
                     # TODO: Retrieve the capital costs of 446.39 for
                     #       transmission lines from the data instead of
                     #       hardcoding it here.
-                    0 if len(mapping[0].regions) == 1 else 446.39,
+                    0
+                    if len(mapping[0].regions) == 1
+                    else 446.39
+                    if mapping[0]["technology"] == ("transmission", "hvac")
+                    else "capital costs" in mapping[1]
+                    or throw(
+                        Exception(
+                            'Unable to determine "capital costs" for:'
+                            f"\n{pf(mapping)}"
+                        )
+                    ),
                 )
-                * mapping[1].get("distance", 1)
+                * mapping[1].get(
+                    "distance",
+                    1 if mapping[0]["technology"][0] != "transmission"
+                    else "distance" in mapping[1]
+                    or throw(
+                        Exception(
+                            'Unable to determine "distance" for:'
+                            f"\n{pf(mapping)}"
+                        )
+                    ),
+                )
                 / (
                     # For some reason, all storage capital costs (CCs) are in
                     # €/MW, except for for batteries, which are in €/MWh.
