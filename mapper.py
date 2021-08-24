@@ -1564,21 +1564,6 @@ def scrub(mappings):
         for key, _ in dcs:
             del mappings[2020][key]
         assert len(mappings[2020]) == old - 3
-
-    # The "lifetime" parameter is missing from the "generator",
-    # "combustion engine", "natural gas", "electricity" mapping in "RP",
-    # so we have to insert it manually.
-    to_fix = [
-        f
-        for year in mappings
-        for f in find(
-            mappings[year],
-            region=("RP",),
-            technology=("generator", "combustion engine"),
-            vectors=("natural gas", "electricity"),
-        )
-    ]
-    to_fix[1]["lifetime"] = to_fix[1].get("lifetime", 25)
     return mappings
 
 
