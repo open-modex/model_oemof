@@ -1143,6 +1143,17 @@ def export(
         row["value"] for row in emissions
     )
 
+    investment_keys = [
+        key
+        for key in results
+        if (type(key[1]) is not Storage)
+        and (
+            (type(key[0]) is not Storage)
+            or ((type(key[0]) is Storage) and (key[1] is None))
+        )
+        if "invest" in results[key]["scalars"]
+        if key[1] is None or tuple(key[1].label)[-1] != "pv expansion limit"
+    ]
     investments = [
         {
             "region": list(label.regions),
@@ -1154,14 +1165,7 @@ def export(
             "value": value,
             "unit": "GWh" if type(key[0]) is Storage else "GW",
         }
-        for key in results
-        if (type(key[1]) is not Storage)
-        and (
-            (type(key[0]) is not Storage)
-            or ((type(key[0]) is Storage) and (key[1] is None))
-        )
-        if "invest" in results[key]["scalars"]
-        if key[1] is None or tuple(key[1].label)[-1] != "pv expansion limit"
+        for key in investment_keys
         for label in [key[0].label]
         for value in [results[key]["scalars"]["invest"].sum() / 1000]
         if value > 0
