@@ -846,12 +846,23 @@ def build(carry, mappings, penalties, timesteps, year):
     co2 = co2[0]
     assert co2[0].region[0] == "DE"
     assert co2[0].vectors[1] == "co2"
+    remaining = (
+        carry["emission budget"]
+        - pd.Series(carry["emissions"], index=range(2016, year), dtype=float)
+        .interpolate()
+        .sum()
+    )
+    co2limit = (
+        co2[1].get("emission limit")
+        if remaining == float("inf")
+        else min(remaining, co2[1].get("emission limit", float("inf")))
+    )
     es.add(
         Sink(
             label=label(co2, "CO2"),
             inputs={
                 buses[(co2[0].region[0], co2[0].vectors[1])]: Flow(
-                    nominal_value=co2[1].get("emission limit"), summed_max=1
+                    nominal_value=co2limit, summed_max=1
                 )
             },
         )
@@ -1128,6 +1139,9 @@ def export(
         ]
         if value > 0
     ]
+    carry["emissions"][year] = pow(10, 9) * sum(
+        row["value"] for row in emissions
+    )
 
     investments = [
         {
@@ -1606,7 +1620,16 @@ def main(
 
     mappings = scrub(mappings)
 
-    carry = {}
+    budgets = [
+        b[1]["emission budget"]
+        for k in mappings
+        for b in find(mappings[k], "emission budget")
+    ]
+    assert len(budgets) <= 1, "Found more than one `emission budget`."
+    carry = {
+        "emission budget": float("inf") if not budgets else budgets[0],
+        "emissions": {},
+    }
 
     for year in years:
         logger.info(f"Processing {year}.")
