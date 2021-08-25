@@ -928,8 +928,8 @@ def build(carry, mappings, penalties, timesteps, year):
 
     Source.slack_costs = sum(
         max(p[1][f"{c} costs"] for p in find(mappings, f"{c} costs"))
-        for c in ["variable"]
-    ) * (10 ** 2)
+        for c in ["variable", "fixed", "capital"]
+    )
     es.add(
         *[
             Source(
