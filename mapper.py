@@ -251,7 +251,13 @@ def invest(mapping):
     # TODO: Retrieve the lifetime of 40 years for transmissions lines
     #       from the data instead of hardcoding it. Same with the WACC
     #       of 0.07 in the line below.
-    lifetime = mapping[1]["lifetime"] if len(mapping[0].regions) == 1 else 40
+    lifetime = (
+        0
+        if mapping[0]["technology"] == ("photovoltaics", "unknown")
+        else mapping[1]["lifetime"]
+        if len(mapping[0].regions) == 1
+        else 40
+    )
     wacc = 0.07
     return {
         **ratios,
