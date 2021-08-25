@@ -1545,7 +1545,11 @@ def main(
     om = Model(es)
 
     logger.info("Starting the solver.")
-    om.solve(solver="gurobi", solve_kwargs={"tee": tee})
+    om.solve(
+        solver="gurobi",
+        solve_kwargs={"tee": tee},
+        cmdline_options={"MarkowitzTol": 0.5},
+    )
 
     logger.info("Processing the results.")
     results = processing.results(om)
