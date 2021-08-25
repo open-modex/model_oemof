@@ -248,6 +248,11 @@ def invest(mapping):
         #       construction.
         ratios["invest_relation_input_capacity"] = ratio
         ratios["invest_relation_output_capacity"] = ratio
+    # TODO: Retrieve the lifetime of 40 years for transmissions lines
+    #       from the data instead of hardcoding it. Same with the WACC
+    #       of 0.07 in the line below.
+    lifetime = mapping[1]["lifetime"] if len(mapping[0].regions) == 1 else 40
+    wacc = 0.07
     return {
         **ratios,
         "investment": Investment(
@@ -291,11 +296,8 @@ def invest(mapping):
                     if mapping[0].technology[1] != "battery"
                     else 1
                 ),
-                # TODO: Retrieve the lifetime of 40 years for transmissions
-                #       lines from the data instead of hardcoding it. Same with
-                #       the WACC of 0.07 in the line below.
-                mapping[1]["lifetime"] if len(mapping[0].regions) == 1 else 40,
-                0.07,
+                lifetime,
+                wacc,
             )
             if "capital costs" in mapping[1] or len(mapping[0].regions) == 2
             else 0,
