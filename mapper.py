@@ -222,7 +222,7 @@ def sankey(df):
     return figure
 
 
-def invest(mapping):
+def invest(carry, mapping):
     if mapping[0].year == 2016 or (
         "capital costs" not in mapping[1]
         and "expansion limit" not in mapping[1]
@@ -483,7 +483,7 @@ def demands(buses, mappings):
     ]
 
 
-def transmission(buses, line, penalties, ratios):
+def transmission(buses, carry, line, penalties, ratios):
     loss_bus = Bus(label=label(line, "losses"))
     loss = Sink(
         label=label(line, "loss-sink"),
@@ -492,7 +492,7 @@ def transmission(buses, line, penalties, ratios):
     flow_bus = Bus(label=label(line, "flow-bus"))
     flow = Sink(
         label=label(line, "energy flow (both directions)"),
-        inputs={flow_bus: Flow(min=0, **invest(line))},
+        inputs={flow_bus: Flow(min=0, **invest(carry, line))},
     )
 
     lines = [
@@ -514,7 +514,7 @@ def transmission(buses, line, penalties, ratios):
     return lines + [flow_bus, flow, loss_bus, loss]
 
 
-def lines(buses, mappings, penalties):
+def lines(buses, carry, mappings, penalties):
     ratios = {
         ratio[0].regions[0]: {
             "ir": ratio[1]["input ratio"],
@@ -540,7 +540,7 @@ def lines(buses, mappings, penalties):
         for line in find(mappings, technology=("transmission", "hvac"))
         + find(mappings, technology=("transmission", "DC"))
         if len(line[0].regions) == 2
-        for node in transmission(buses, line, penalties, ratios)
+        for node in transmission(buses, carry, line, penalties, ratios)
     ]
 
 
@@ -573,14 +573,14 @@ def trades(buses, mappings):
     return sinks + sources
 
 
-def fixed(buses, mappings):
+def fixed(buses, carry, mappings):
     sources = [
         Source(
             label=label(source, "electricity generation"),
             outputs={
                 auxiliary_bus: Flow(
                     fix=source[1]["capacity factor"],
-                    **invest(source),
+                    **invest(carry, source),
                     variable_costs=source[1].get("variable costs", 0),
                 )
             },
@@ -614,7 +614,7 @@ def fixed(buses, mappings):
     )
 
 
-def flexible(buses, mappings):
+def flexible(buses, carry, mappings):
     limits = find(mappings, "natural domestic limit")
     limit_buses = {
         (l[0].regions, l[0].vectors[0]): Bus(label=label(l, "limit bus"))
@@ -643,7 +643,7 @@ def flexible(buses, mappings):
             label=label(f, "electricity generation"),
             outputs={
                 source_bus: Flow(
-                    **invest(f),
+                    **invest(carry, f),
                     variable_costs=(
                         f[1]["variable costs"]
                         + (1 / f[1]["output ratio"])
@@ -712,7 +712,7 @@ def flexible(buses, mappings):
     )
 
 
-def storages(buses, mappings, penalties):
+def storages(buses, carry, mappings, penalties):
     return [
         Storage(
             label=label(storage, "storage"),
@@ -734,7 +734,7 @@ def storages(buses, mappings, penalties):
             },
         )
         for storage in find(mappings, "E2P ratio")
-        for investment in [invest(storage)]
+        for investment in [invest(carry, storage)]
         # TODO: Figure out whether these nominal values have to be multiplied
         #       with `storage[1]["input ratio"]` or
         #       `storage[1]["output ratio"]` respectively.
@@ -746,7 +746,7 @@ def storages(buses, mappings, penalties):
     ]
 
 
-def build(mappings, penalties, timesteps, year):
+def build(carry, mappings, penalties, timesteps, year):
     logger.info("Building the energy system.")
     es = ES(
         timeindex=pd.date_range(
@@ -786,7 +786,7 @@ def build(mappings, penalties, timesteps, year):
             label=((r,), "pv expansion limit"),
             inputs={
                 buses[((r,), "photovoltaics")]: Flow(
-                    **invest((key, mappings[key]))
+                    **invest(carry, (key, mappings[key]))
                 )
             },
         )
@@ -878,11 +878,11 @@ def build(mappings, penalties, timesteps, year):
     )
 
     es.add(*demand_sinks)
-    es.add(*lines(buses, mappings, penalties))
+    es.add(*lines(buses, carry, mappings, penalties))
     es.add(*trades(buses, mappings))
-    es.add(*fixed(buses, mappings))
-    es.add(*flexible(buses, mappings))
-    es.add(*storages(buses, mappings, penalties))
+    es.add(*fixed(buses, carry, mappings))
+    es.add(*flexible(buses, carry, mappings))
+    es.add(*storages(buses, carry, mappings, penalties))
 
     renewable_auxiliary_buses = [
         bus
@@ -913,6 +913,7 @@ def temporary(path):
 
 
 def export(
+    carry,
     export_prefix,
     mappings,
     meta,
@@ -1526,6 +1527,7 @@ def cli(*xs, **ks):
 
 
 def process(
+    carry,
     export_prefix,
     mappings,
     penalties,
@@ -1534,7 +1536,7 @@ def process(
     timesteps,
     year,
 ):
-    es = build(mappings, penalties, timesteps, year)
+    es = build(carry, mappings, penalties, timesteps, year)
 
     logger.info("Building the model.")
     om = Model(es)
@@ -1550,7 +1552,9 @@ def process(
         temporary(temporary_directory) if temporary_directory else TD(dir=".")
     ) as td:
         td = Path(td)
-        export(export_prefix, mappings, meta, penalties, results, td, year)
+        export(
+            carry, export_prefix, mappings, meta, penalties, results, td, year
+        )
     return (es, om)
 
 
@@ -1602,9 +1606,12 @@ def main(
 
     mappings = scrub(mappings)
 
+    carry = {}
+
     for year in years:
         logger.info(f"Processing {year}.")
         process(
+            carry,
             export_prefix,
             mappings[year],
             penalties,
