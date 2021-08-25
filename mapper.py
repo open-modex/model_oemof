@@ -259,6 +259,25 @@ def invest(carry, mapping):
         else 40
     )
     wacc = 0.07
+    key = Key(**{**mapping[0], "year": None})
+    existing = (
+        [
+            carry[k][interval]
+            for k in carry
+            if type(k) is Key
+            if k.technology[0] == "photovoltaics"
+            if k.technology[1] != "unknown"
+            if key.regions == k.regions
+            for interval in carry[k]
+            if pd.to_datetime(str(mapping[0].year)) in interval
+        ]
+        if mapping[0]["technology"] == ("photovoltaics", "unknown")
+        else [
+            carry[key][k]
+            for k in carry.get(key, {})
+            if pd.to_datetime(str(mapping[0].year)) in k
+        ]
+    )
     return {
         **ratios,
         "investment": Investment(
@@ -309,8 +328,11 @@ def invest(carry, mapping):
             )
             if "capital costs" in mapping[1] or len(mapping[0].regions) == 2
             else 0,
-            existing=mapping[1].get("installed capacity", 0)
-            * mapping[1].get("E2P ratio", 1),
+            existing=sum(existing)
+            + (
+                mapping[1].get("installed capacity", 0)
+                * mapping[1].get("E2P ratio", 1)
+            )
             **optionals,
             lifetime=lifetime,
         )
@@ -1170,6 +1192,26 @@ def export(
         for value in [results[key]["scalars"]["invest"].sum() / 1000]
         if value > 0
     ]
+
+    def reducer(d, pair):
+        key = Key(
+            region=pair[0].label.regions,
+            technology=pair[0].label.technology,
+            vectors=pair[0].label.vectors,
+            year=None,
+        )
+        value = results[pair]["scalars"]["invest"].sum()
+        if value == 0:
+            return d
+        holder = pair[0] if pair[1] is None else pair[0].outputs[pair[1]]
+        now = pd.to_datetime(str(year))
+        then = now + pd.Timedelta(f"{holder.investment.lifetime}y")
+        interval = pd.Interval(now, then, closed="both")
+        d[key] = d.get(key, {})
+        d[key][interval] = value
+        return d
+
+    carry = reduce(reducer, investment_keys, carry)
 
     total_capacity = [
         {
