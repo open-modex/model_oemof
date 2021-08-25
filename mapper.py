@@ -272,6 +272,8 @@ def invest(mapping):
                     if len(mapping[0].regions) == 1
                     else 446.39
                     if mapping[0]["technology"] == ("transmission", "hvac")
+                    else 1
+                    if mapping[0]["technology"] == ("transmission", "DC")
                     else "capital costs" in mapping[1]
                     or throw(
                         Exception(
