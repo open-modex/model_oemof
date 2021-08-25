@@ -84,6 +84,11 @@ def rs2df(rs):
     )
 
 
+def throw(exception):
+    raise exception
+    return "This should never be reached."
+
+
 def sankey(df):
     idx = pd.IndexSlice
     sums = df.sum()
@@ -217,7 +222,7 @@ def sankey(df):
     return figure
 
 
-def invest(mapping):
+def invest(carry, mapping):
     if mapping[0].year == 2016 or (
         "capital costs" not in mapping[1]
         and "expansion limit" not in mapping[1]
@@ -243,6 +248,36 @@ def invest(mapping):
         #       construction.
         ratios["invest_relation_input_capacity"] = ratio
         ratios["invest_relation_output_capacity"] = ratio
+    # TODO: Retrieve the lifetime of 40 years for transmissions lines
+    #       from the data instead of hardcoding it. Same with the WACC
+    #       of 0.07 in the line below.
+    lifetime = (
+        0
+        if mapping[0]["technology"] == ("photovoltaics", "unknown")
+        else mapping[1]["lifetime"]
+        if len(mapping[0].regions) == 1
+        else 40
+    )
+    wacc = 0.07
+    key = Key(**{**mapping[0], "year": None})
+    existing = (
+        [
+            carry[k][interval]
+            for k in carry
+            if type(k) is Key
+            if k.technology[0] == "photovoltaics"
+            if k.technology[1] != "unknown"
+            if key.regions == k.regions
+            for interval in carry[k]
+            if pd.to_datetime(str(mapping[0].year)) in interval
+        ]
+        if mapping[0]["technology"] == ("photovoltaics", "unknown")
+        else [
+            carry[key][k]
+            for k in carry.get(key, {})
+            if pd.to_datetime(str(mapping[0].year)) in k
+        ]
+    )
     return {
         **ratios,
         "investment": Investment(
@@ -252,9 +287,31 @@ def invest(mapping):
                     # TODO: Retrieve the capital costs of 446.39 for
                     #       transmission lines from the data instead of
                     #       hardcoding it here.
-                    0 if len(mapping[0].regions) == 1 else 446.39,
+                    0
+                    if len(mapping[0].regions) == 1
+                    else 446.39
+                    if mapping[0]["technology"] == ("transmission", "hvac")
+                    else 1
+                    if mapping[0]["technology"] == ("transmission", "DC")
+                    else "capital costs" in mapping[1]
+                    or throw(
+                        Exception(
+                            'Unable to determine "capital costs" for:'
+                            f"\n{pf(mapping)}"
+                        )
+                    ),
                 )
-                * mapping[1].get("distance", 1)
+                * mapping[1].get(
+                    "distance",
+                    1 if mapping[0]["technology"][0] != "transmission"
+                    else "distance" in mapping[1]
+                    or throw(
+                        Exception(
+                            'Unable to determine "distance" for:'
+                            f"\n{pf(mapping)}"
+                        )
+                    ),
+                )
                 / (
                     # For some reason, all storage capital costs (CCs) are in
                     # €/MW, except for for batteries, which are in €/MWh.
@@ -266,18 +323,19 @@ def invest(mapping):
                     if mapping[0].technology[1] != "battery"
                     else 1
                 ),
-                # TODO: Retrieve the lifetime of 40 years for transmissions
-                #       lines from the data instead of hardcoding it. Same with
-                #       the WACC of 0.07 in the line below.
-                mapping[1]["lifetime"] if len(mapping[0].regions) == 1 else 40,
-                0.07,
+                lifetime,
+                wacc,
             )
             if "capital costs" in mapping[1] or len(mapping[0].regions) == 2
             else 0,
-            existing=mapping[1].get("installed capacity", 0)
-            * mapping[1].get("E2P ratio", 1),
-            **optionals,
-        )
+            existing=sum(existing)
+            + (
+                mapping[1].get("installed capacity", 0)
+                * mapping[1].get("E2P ratio", 1)
+            )
+            ** optionals,
+            lifetime=lifetime,
+        ),
     }
 
 
@@ -427,10 +485,10 @@ def from_json(path):
         }
         for mapping in base
     }
-    result["concrete"]["objects"] = reduced
     years = sorted(
         pd.to_datetime(ts).year for tsb in tsbs["concrete"] for ts in tsb
     )
+    result = {}
     result.update(
         {
             year: {k: reduced[k] for k in reduced if k.year == year}
@@ -482,7 +540,7 @@ def demands(buses, mappings):
     ]
 
 
-def transmission(buses, line, penalties, ratios):
+def transmission(buses, carry, line, penalties, ratios):
     loss_bus = Bus(label=label(line, "losses"))
     loss = Sink(
         label=label(line, "loss-sink"),
@@ -491,7 +549,7 @@ def transmission(buses, line, penalties, ratios):
     flow_bus = Bus(label=label(line, "flow-bus"))
     flow = Sink(
         label=label(line, "energy flow (both directions)"),
-        inputs={flow_bus: Flow(min=0, **invest(line))},
+        inputs={flow_bus: Flow(min=0, **invest(carry, line))},
     )
 
     lines = [
@@ -513,7 +571,7 @@ def transmission(buses, line, penalties, ratios):
     return lines + [flow_bus, flow, loss_bus, loss]
 
 
-def lines(buses, mappings, penalties):
+def lines(buses, carry, mappings, penalties):
     ratios = {
         ratio[0].regions[0]: {
             "ir": ratio[1]["input ratio"],
@@ -539,7 +597,7 @@ def lines(buses, mappings, penalties):
         for line in find(mappings, technology=("transmission", "hvac"))
         + find(mappings, technology=("transmission", "DC"))
         if len(line[0].regions) == 2
-        for node in transmission(buses, line, penalties, ratios)
+        for node in transmission(buses, carry, line, penalties, ratios)
     ]
 
 
@@ -572,14 +630,14 @@ def trades(buses, mappings):
     return sinks + sources
 
 
-def fixed(buses, mappings):
+def fixed(buses, carry, mappings):
     sources = [
         Source(
             label=label(source, "electricity generation"),
             outputs={
                 auxiliary_bus: Flow(
                     fix=source[1]["capacity factor"],
-                    **invest(source),
+                    **invest(carry, source),
                     variable_costs=source[1].get("variable costs", 0),
                 )
             },
@@ -613,7 +671,7 @@ def fixed(buses, mappings):
     )
 
 
-def flexible(buses, mappings):
+def flexible(buses, carry, mappings):
     limits = find(mappings, "natural domestic limit")
     limit_buses = {
         (l[0].regions, l[0].vectors[0]): Bus(label=label(l, "limit bus"))
@@ -642,7 +700,7 @@ def flexible(buses, mappings):
             label=label(f, "electricity generation"),
             outputs={
                 source_bus: Flow(
-                    **invest(f),
+                    **invest(carry, f),
                     variable_costs=(
                         f[1]["variable costs"]
                         + (1 / f[1]["output ratio"])
@@ -711,7 +769,7 @@ def flexible(buses, mappings):
     )
 
 
-def storages(buses, mappings, penalties):
+def storages(buses, carry, mappings, penalties):
     return [
         Storage(
             label=label(storage, "storage"),
@@ -733,7 +791,7 @@ def storages(buses, mappings, penalties):
             },
         )
         for storage in find(mappings, "E2P ratio")
-        for investment in [invest(storage)]
+        for investment in [invest(carry, storage)]
         # TODO: Figure out whether these nominal values have to be multiplied
         #       with `storage[1]["input ratio"]` or
         #       `storage[1]["output ratio"]` respectively.
@@ -745,7 +803,7 @@ def storages(buses, mappings, penalties):
     ]
 
 
-def build(mappings, penalties, timesteps, year):
+def build(carry, mappings, penalties, timesteps, year):
     logger.info("Building the energy system.")
     es = ES(
         timeindex=pd.date_range(
@@ -785,7 +843,7 @@ def build(mappings, penalties, timesteps, year):
             label=((r,), "pv expansion limit"),
             inputs={
                 buses[((r,), "photovoltaics")]: Flow(
-                    **invest((key, mappings[key]))
+                    **invest(carry, (key, mappings[key]))
                 )
             },
         )
@@ -845,12 +903,23 @@ def build(mappings, penalties, timesteps, year):
     co2 = co2[0]
     assert co2[0].region[0] == "DE"
     assert co2[0].vectors[1] == "co2"
+    remaining = (
+        carry["emission budget"]
+        - pd.Series(carry["emissions"], index=range(2016, year), dtype=float)
+        .interpolate()
+        .sum()
+    )
+    co2limit = (
+        co2[1].get("emission limit")
+        if remaining == float("inf")
+        else min(remaining, co2[1].get("emission limit", float("inf")))
+    )
     es.add(
         Sink(
             label=label(co2, "CO2"),
             inputs={
                 buses[(co2[0].region[0], co2[0].vectors[1])]: Flow(
-                    nominal_value=co2[1].get("emission limit"), summed_max=1
+                    nominal_value=co2limit, summed_max=1
                 )
             },
         )
@@ -877,11 +946,11 @@ def build(mappings, penalties, timesteps, year):
     )
 
     es.add(*demand_sinks)
-    es.add(*lines(buses, mappings, penalties))
+    es.add(*lines(buses, carry, mappings, penalties))
     es.add(*trades(buses, mappings))
-    es.add(*fixed(buses, mappings))
-    es.add(*flexible(buses, mappings))
-    es.add(*storages(buses, mappings, penalties))
+    es.add(*fixed(buses, carry, mappings))
+    es.add(*flexible(buses, carry, mappings))
+    es.add(*storages(buses, carry, mappings, penalties))
 
     renewable_auxiliary_buses = [
         bus
@@ -912,6 +981,7 @@ def temporary(path):
 
 
 def export(
+    carry,
     export_prefix,
     mappings,
     meta,
@@ -1126,7 +1196,21 @@ def export(
         ]
         if value > 0
     ]
+    carry["emissions"][year] = pow(10, 9) * sum(
+        row["value"] for row in emissions
+    )
 
+    investment_keys = [
+        key
+        for key in results
+        if (type(key[1]) is not Storage)
+        and (
+            (type(key[0]) is not Storage)
+            or ((type(key[0]) is Storage) and (key[1] is None))
+        )
+        if "invest" in results[key]["scalars"]
+        if key[1] is None or tuple(key[1].label)[-1] != "pv expansion limit"
+    ]
     investments = [
         {
             "region": list(label.regions),
@@ -1138,18 +1222,31 @@ def export(
             "value": value,
             "unit": "GWh" if type(key[0]) is Storage else "GW",
         }
-        for key in results
-        if (type(key[1]) is not Storage)
-        and (
-            (type(key[0]) is not Storage)
-            or ((type(key[0]) is Storage) and (key[1] is None))
-        )
-        if "invest" in results[key]["scalars"]
-        if key[1] is None or tuple(key[1].label)[-1] != "pv expansion limit"
+        for key in investment_keys
         for label in [key[0].label]
         for value in [results[key]["scalars"]["invest"].sum() / 1000]
         if value > 0
     ]
+
+    def reducer(d, pair):
+        key = Key(
+            region=pair[0].label.regions,
+            technology=pair[0].label.technology,
+            vectors=pair[0].label.vectors,
+            year=None,
+        )
+        value = results[pair]["scalars"]["invest"].sum()
+        if value == 0:
+            return d
+        holder = pair[0] if pair[1] is None else pair[0].outputs[pair[1]]
+        now = pd.to_datetime(str(year))
+        then = now + pd.Timedelta(f"{holder.investment.lifetime}y")
+        interval = pd.Interval(now, then, closed="both")
+        d[key] = d.get(key, {})
+        d[key][interval] = value
+        return d
+
+    carry = reduce(reducer, investment_keys, carry)
 
     total_capacity = [
         {
@@ -1434,7 +1531,8 @@ def export(
         " the case of exportation, any existing files will be overwritten."
         " Note also that names appearing enclosed in curly braces will be"
         " replaced with their value. Currently the following such names are"
-        " supported:\n\nyear - the value supplied via the `--year` option."
+        " supported:\n\nyear - the currently active year from the `<years>`"
+        " argument"
     ),
 )
 @click.option(
@@ -1451,9 +1549,7 @@ def export(
         " directory."
     ),
 )
-@click.option(
-    "--year", metavar="<year>", required=True, show_default=True, type=int
-)
+@click.argument("years", metavar="<years>...", nargs=-1, type=int)
 @click.option(
     "--verbosity",
     default="WARNING",
@@ -1512,7 +1608,10 @@ def cli(*xs, **ks):
     """Read <scenario file>, build the corresponding model and solve it.
 
     The <scenario file> should be a JSON file containing all input data.
+    The <years> which are given specify the years for which data is
+    taken from the input file to build the model.
     """
+
     ks["penalties"] = {
         "storage": ks["storage_penalty"],
         "transmission": ks["transmission_penalty"],
@@ -1522,24 +1621,17 @@ def cli(*xs, **ks):
     return main(*xs, **ks)
 
 
-def main(
+def process(
+    carry,
     export_prefix,
-    path,
+    mappings,
     penalties,
     tee,
     temporary_directory,
     timesteps,
-    verbosity,
     year,
 ):
-    if verbosity == "SILENT":
-        logger.disable(__name__)
-    else:
-        logger.remove()
-        logger.add(sys.stderr, level=verbosity)
-
-    mappings = from_json(path)[year]
-    es = build(mappings, penalties, timesteps, year)
+    es = build(carry, mappings, penalties, timesteps, year)
 
     logger.info("Building the model.")
     om = Model(es)
@@ -1559,8 +1651,85 @@ def main(
         temporary(temporary_directory) if temporary_directory else TD(dir=".")
     ) as td:
         td = Path(td)
-        export(export_prefix, mappings, meta, penalties, results, td, year)
+        export(
+            carry, export_prefix, mappings, meta, penalties, results, td, year
+        )
     return (es, om)
+
+
+def scrub(mappings):
+    """Clean up mappings read from JSON.
+
+    Clean up various inconsistencies and errors after reading the input
+    data. These are usually only present in early releases and are
+    subsequently once they are reported. Nonetheless, in order to not be
+    dependent on upstream fixes, the function at hand acts as a central
+    hub collecting cleanup functions for these issues.
+
+    The dictionary passed in as an argument is both, modified in place
+    and returned as well.
+    """
+    # Once the 2020 ("transmission", "DC") expansion limits are gone
+    # from the data, this will no longer be necessary.
+    if 2020 in mappings:
+        dcs = find(mappings[2020], technology=("transmission", "DC"))
+        assert len(dcs) == 3
+        old = len(mappings[2020])
+        for key, _ in dcs:
+            del mappings[2020][key]
+        assert len(mappings[2020]) == old - 3
+    return mappings
+
+
+def main(
+    export_prefix,
+    path,
+    penalties,
+    tee,
+    temporary_directory,
+    timesteps,
+    verbosity,
+    years,
+):
+    if verbosity == "SILENT":
+        logger.disable(__name__)
+    else:
+        logger.remove()
+        logger.add(sys.stderr, level=verbosity)
+
+    mappings = from_json(path)
+
+    if not years:
+        years = mappings.keys()
+    years = tuple(sorted(set(years)))
+
+    mappings = scrub(mappings)
+
+    budgets = [
+        b[1]["emission budget"]
+        for k in mappings
+        for b in find(mappings[k], "emission budget")
+    ]
+    assert len(budgets) <= 1, "Found more than one `emission budget`."
+    carry = {
+        "emission budget": float("inf") if not budgets else budgets[0],
+        "emissions": {},
+    }
+
+    for year in years:
+        logger.info(f"Processing {year}.")
+        process(
+            carry,
+            export_prefix,
+            mappings[year],
+            penalties,
+            tee,
+            temporary_directory,
+            timesteps,
+            year,
+        )
+
+    return
 
 
 def find(d, *xs, **kws):
