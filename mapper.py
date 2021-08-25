@@ -303,7 +303,8 @@ def invest(carry, mapping):
                 )
                 * mapping[1].get(
                     "distance",
-                    1 if mapping[0]["technology"][0] != "transmission"
+                    1
+                    if mapping[0]["technology"][0] != "transmission"
                     else "distance" in mapping[1]
                     or throw(
                         Exception(
