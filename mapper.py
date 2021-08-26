@@ -278,11 +278,6 @@ def invest(carry, mapping):
             if pd.to_datetime(str(mapping[0].year)) in k
         ]
     )
-    distances = {
-        ("BW", "SH"): 633.07,
-        ("BY", "ST"): 384.53,
-        ("NI", "NW"): 182.6999374,
-    }
     ep_costs = (
             annuity(
                 mapping[1].get(
@@ -308,9 +303,6 @@ def invest(carry, mapping):
                     "distance",
                     1
                     if mapping[0]["technology"][0] != "transmission"
-                    else distances[mapping[0]["region"]]
-                    if mapping[0]["technology"][1] == "DC"
-                    and mapping[0]["region"] in distances
                     else "distance" in mapping[1]
                     or throw(
                         Exception(
