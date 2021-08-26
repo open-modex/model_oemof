@@ -278,10 +278,8 @@ def invest(carry, mapping):
             if pd.to_datetime(str(mapping[0].year)) in k
         ]
     )
-    return {
-        **ratios,
-        "investment": Investment(
-            ep_costs=annuity(
+    ep_costs = (
+            annuity(
                 mapping[1].get(
                     "capital costs",
                     # TODO: Retrieve the capital costs of 446.39 for
@@ -328,7 +326,12 @@ def invest(carry, mapping):
                 wacc,
             )
             if "capital costs" in mapping[1] or len(mapping[0].regions) == 2
-            else 0,
+            else 0
+    )
+    return {
+        **ratios,
+        "investment": Investment(
+            ep_costs=ep_costs,
             existing=sum(existing)
             + (
                 mapping[1].get("installed capacity", 0)
