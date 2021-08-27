@@ -313,13 +313,17 @@ def invest(carry, mapping):
                 )
                 / (
                     # For some reason, all storage capital costs (CCs) are in
-                    # €/MW, except for for batteries, which are in €/MWh.
+                    # €/MW, except for for batteries and salt caverns, which
+                    # are in €/MWh.
                     # Therefore the CCs for every non-battery storage have to
                     # be divided by the E2P ratio, which is in hours, in order
                     # to account for the fact that our storage capacities are
                     # in MWh.
+                    # TODO: This should really be done based on
+                    #       "capital costs"' unit of measure.
                     mapping[1].get("E2P ratio", 1)
-                    if mapping[0].technology[1] != "battery"
+                    if mapping[0].technology[1]
+                    not in ["battery", "salt cavern"]
                     else 1
                 ),
                 lifetime,
