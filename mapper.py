@@ -339,8 +339,8 @@ def invest(carry, mapping):
             + (
                 mapping[1].get("installed capacity", 0)
                 * mapping[1].get("E2P ratio", 1)
-            )
-            ** optionals,
+            ),
+            **optionals,
             lifetime=lifetime,
         ),
     }
