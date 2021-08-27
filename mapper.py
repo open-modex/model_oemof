@@ -279,58 +279,57 @@ def invest(carry, mapping):
         ]
     )
     ep_costs = (
-            annuity(
-                mapping[1].get(
-                    "capital costs",
-                    # TODO: Retrieve the capital costs of 446.39 for
-                    #       transmission lines from the data instead of
-                    #       hardcoding it here.
-                    0
-                    if len(mapping[0].regions) == 1
-                    else 446.39
-                    if mapping[0]["technology"] == ("transmission", "hvac")
-                    else 1
-                    if mapping[0]["technology"] == ("transmission", "DC")
-                    else "capital costs" in mapping[1]
-                    or throw(
-                        Exception(
-                            'Unable to determine "capital costs" for:'
-                            f"\n{pf(mapping)}"
-                        )
-                    ),
-                )
-                * mapping[1].get(
-                    "distance",
-                    1
-                    if mapping[0]["technology"][0] != "transmission"
-                    else "distance" in mapping[1]
-                    or throw(
-                        Exception(
-                            'Unable to determine "distance" for:'
-                            f"\n{pf(mapping)}"
-                        )
-                    ),
-                )
-                / (
-                    # For some reason, all storage capital costs (CCs) are in
-                    # €/MW, except for for batteries and salt caverns, which
-                    # are in €/MWh.
-                    # Therefore the CCs for every non-battery storage have to
-                    # be divided by the E2P ratio, which is in hours, in order
-                    # to account for the fact that our storage capacities are
-                    # in MWh.
-                    # TODO: This should really be done based on
-                    #       "capital costs"' unit of measure.
-                    mapping[1].get("E2P ratio", 1)
-                    if mapping[0].technology[1]
-                    not in ["battery", "salt cavern"]
-                    else 1
+        annuity(
+            mapping[1].get(
+                "capital costs",
+                # TODO: Retrieve the capital costs of 446.39 for
+                #       transmission lines from the data instead of
+                #       hardcoding it here.
+                0
+                if len(mapping[0].regions) == 1
+                else 446.39
+                if mapping[0]["technology"] == ("transmission", "hvac")
+                else 1
+                if mapping[0]["technology"] == ("transmission", "DC")
+                else "capital costs" in mapping[1]
+                or throw(
+                    Exception(
+                        'Unable to determine "capital costs" for:'
+                        f"\n{pf(mapping)}"
+                    )
                 ),
-                lifetime,
-                wacc,
             )
-            if "capital costs" in mapping[1] or len(mapping[0].regions) == 2
-            else 0
+            * mapping[1].get(
+                "distance",
+                1
+                if mapping[0]["technology"][0] != "transmission"
+                else "distance" in mapping[1]
+                or throw(
+                    Exception(
+                        'Unable to determine "distance" for:'
+                        f"\n{pf(mapping)}"
+                    )
+                ),
+            )
+            / (
+                # For some reason, all storage capital costs (CCs) are in
+                # €/MW, except for for batteries and salt caverns, which
+                # are in €/MWh.
+                # Therefore the CCs for every non-battery storage have to
+                # be divided by the E2P ratio, which is in hours, in order
+                # to account for the fact that our storage capacities are
+                # in MWh.
+                # TODO: This should really be done based on
+                #       "capital costs"' unit of measure.
+                mapping[1].get("E2P ratio", 1)
+                if mapping[0].technology[1] not in ["battery", "salt cavern"]
+                else 1
+            ),
+            lifetime,
+            wacc,
+        )
+        if "capital costs" in mapping[1] or len(mapping[0].regions) == 2
+        else 0
     )
     return {
         **ratios,
