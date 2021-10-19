@@ -1676,15 +1676,6 @@ def scrub(mappings):
     The dictionary passed in as an argument is both, modified in place
     and returned as well.
     """
-    # Once the 2020 ("transmission", "DC") expansion limits are gone
-    # from the data, this will no longer be necessary.
-    if 2020 in mappings:
-        dcs = find(mappings[2020], technology=("transmission", "DC"))
-        assert len(dcs) == 3
-        old = len(mappings[2020])
-        for key, _ in dcs:
-            del mappings[2020][key]
-        assert len(mappings[2020]) == old - 3
     return mappings
 
 
