@@ -994,6 +994,7 @@ def export(
     meta,
     penalties,
     results,
+    tags,
     temporary_directory,
     year,
 ):
@@ -1033,7 +1034,7 @@ def export(
     defaults = {
         "scenario_id": 1,
         "unit": "MW",
-        "tags": "",
+        "tags": tags,
         "method": '{"value": "timeseries"}',
         "source": "oemof",
         "comment": "",
@@ -1565,6 +1566,15 @@ def export(
     help="Control the verbosity level.",
 )
 @click.option(
+    "--tags",
+    default="{}",
+    show_default=True,
+    help=(
+        "A JSON object with tags, which should be put into the tags column of"
+        " the exported CSV files"
+    ),
+)
+@click.option(
     "--tee/--no-tee",
     default=False,
     show_default=True,
@@ -1621,6 +1631,7 @@ def process(
     export_prefix,
     mappings,
     penalties,
+    tags,
     tee,
     temporary_directory,
     timesteps,
@@ -1647,7 +1658,15 @@ def process(
     ) as td:
         td = Path(td)
         export(
-            carry, export_prefix, mappings, meta, penalties, results, td, year
+            carry,
+            export_prefix,
+            mappings,
+            meta,
+            penalties,
+            results,
+            tags,
+            td,
+            year,
         )
     return (es, om)
 
@@ -1671,6 +1690,7 @@ def main(
     export_prefix,
     path,
     penalties,
+    tags,
     tee,
     temporary_directory,
     timesteps,
@@ -1709,6 +1729,7 @@ def main(
             export_prefix,
             mappings[year],
             penalties,
+            tags,
             tee,
             temporary_directory,
             timesteps,
