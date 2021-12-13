@@ -13,6 +13,10 @@ New Features
     logged as debug output. An error is still raised, but only after the
     complete input data is scanned for duplicates.
 
+  * The contents of the "tags" column of exported results can now be
+    specified using the "--tags" option.
+    (6a2c271c552d6be4b6c2347415e92f279394e85a)
+
 
 Fixes
 -----
