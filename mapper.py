@@ -1284,18 +1284,6 @@ def export(
 
     regions = sorted({region for row in series for region in row["region"]})
 
-    if emissions:
-        emissions.append(
-            reduce(
-                lambda d1, d2: {
-                    **d1,
-                    "region": sorted(set(d1["region"] + d2["region"])),
-                    "value": d1["value"] + d2["value"],
-                },
-                emissions,
-            )
-        )
-
     cost_defaults = {
         "region": regions,
         "input_energy_vector": "ALL",
