@@ -14,6 +14,13 @@ New Features
     complete input data is scanned for duplicates.
 
 
+Fixes
+-----
+
+  * Stop reporting an emission total across all regions.
+    (ec5a35d9ede1bf767aca05172736300ba8b2d4d5)
+
+
 v0.0.3
 ======
 
